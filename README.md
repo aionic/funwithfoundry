@@ -79,6 +79,17 @@ pwsh -NoProfile -File .\scripts\Test-Preflight.ps1
 cd terraform
 Copy-Item terraform.tfvars.example terraform.tfvars
 terraform init
+
+# Create the network-injected account and its dependencies first.
+terraform apply -target='module.foundry_primary.azapi_resource.foundry'
+
+# Azure stores the account-level Agents capability host under a platform-generated
+# name, so an idempotent helper verifies or creates it outside Terraform state.
+cd ..
+pwsh -NoProfile -File .\scripts\Ensure-AgentCapabilityHost.ps1
+
+# The full apply creates the Terraform-managed project-level Agents capability host.
+cd terraform
 terraform apply
 
 # 4. See what's next

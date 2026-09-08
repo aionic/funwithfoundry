@@ -134,6 +134,8 @@ resource "azurerm_function_app_flex_consumption" "this" {
   virtual_network_subnet_id     = var.function_subnet_id
   public_network_access_enabled = false
 
+  webdeploy_publish_basic_authentication_enabled = false
+
   identity {
     type         = "UserAssigned"
     identity_ids = [azurerm_user_assigned_identity.func.id]

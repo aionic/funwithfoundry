@@ -26,6 +26,19 @@ finally {
     Pop-Location
 }
 
+# Flex Consumption injects a legacy connection-string setting at creation even when
+# identity-based host storage is configured. Shared-key access is disabled here, and
+# the exact setting overrides AzureWebJobsStorage__*, preventing trigger sync.
+az functionapp config appsettings delete `
+    --resource-group $lab.ResourceGroups.Secondary `
+    --name $fn.name `
+    --setting-names AzureWebJobsStorage `
+    --output none
+if ($LASTEXITCODE -ne 0) { throw 'Failed to remove the legacy AzureWebJobsStorage setting.' }
+
+az functionapp restart --resource-group $lab.ResourceGroups.Secondary --name $fn.name
+if ($LASTEXITCODE -ne 0) { throw 'Failed to restart the function app.' }
+
 $zip = Join-Path $env:TEMP 'ingest_func.zip'
 if (Test-Path $zip) { Remove-Item $zip }
 Compress-Archive -Path (Join-Path $SourceDir '*') -DestinationPath $zip -Force
@@ -72,3 +85,8 @@ az vm run-command invoke `
     --command-id RunPowerShellScript `
     --scripts "@$tmp" `
     --query 'value[0].message' -o tsv
+if ($LASTEXITCODE -ne 0) { throw 'The jumpbox package deployment command failed.' }
+
+$syncUrl = "https://management.azure.com/subscriptions/$($lab.SubscriptionId)/resourceGroups/$($lab.ResourceGroups.Secondary)/providers/Microsoft.Web/sites/$($fn.name)/syncfunctiontriggers?api-version=2024-04-01"
+az rest --method post --url $syncUrl --output none
+if ($LASTEXITCODE -ne 0) { throw 'Function trigger synchronization failed.' }

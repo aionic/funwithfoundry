@@ -83,8 +83,10 @@ foreach ($acct in @($accounts)) {
     $acctHosts = Get-Json @('rest', '--method', 'get', '--url',
         "https://management.azure.com$($acct.id)/capabilityHosts?api-version=2025-04-01-preview", '-o', 'json')
     foreach ($h in @($acctHosts.value)) {
-        $status = if ($h.properties.provisioningState -eq 'Succeeded') { 'PASS' } else { 'FAIL' }
-        Add-Check "Account capability host" $status "$($h.name) = $($h.properties.provisioningState)"
+        $kind = $h.properties.capabilityHostKind
+        $state = $h.properties.provisioningState
+        $status = if ($kind -eq 'Agents' -and $state -eq 'Succeeded') { 'PASS' } else { 'FAIL' }
+        Add-Check "Account capability host" $status "$($h.name) kind=$kind state=$state"
     }
 
     $projects = Get-Json @('rest', '--method', 'get', '--url',
@@ -93,8 +95,13 @@ foreach ($acct in @($accounts)) {
         $projHosts = Get-Json @('rest', '--method', 'get', '--url',
             "https://management.azure.com$($proj.id)/capabilityHosts?api-version=2025-04-01-preview", '-o', 'json')
         foreach ($h in @($projHosts.value)) {
-            $status = if ($h.properties.provisioningState -eq 'Succeeded') { 'PASS' } else { 'FAIL' }
-            Add-Check "Project capability host" $status "$($h.name) = $($h.properties.provisioningState)"
+            $properties = $h.properties
+            $connectionsReady = $properties.vectorStoreConnections -and
+                $properties.storageConnections -and $properties.threadStorageConnections
+            $status = if ($properties.capabilityHostKind -eq 'Agents' -and
+                $properties.provisioningState -eq 'Succeeded' -and $connectionsReady) { 'PASS' } else { 'FAIL' }
+            $connections = "search=$($properties.vectorStoreConnections -join ',') storage=$($properties.storageConnections -join ',') thread=$($properties.threadStorageConnections -join ',')"
+            Add-Check "Project capability host" $status "$($h.name) kind=$($properties.capabilityHostKind) state=$($properties.provisioningState) $connections"
         }
     }
 }

@@ -332,9 +332,9 @@ resource "time_sleep" "rbac_propagation" {
 # It must also carry customerSubnet matching the injected agent subnet, despite the docs
 # describing an empty body.
 #
-# On a fresh build, create it once out of band before the project capability host:
-#   az rest --method put --url "<account-id>/capabilityHosts/caphostacct?api-version=2025-04-01-preview" \
-#     --body '{"properties":{"capabilityHostKind":"Agents","customerSubnet":"<agent-subnet-id>"}}'
+# On a fresh build, create it once out of band before the project capability host with
+# scripts/Ensure-AgentCapabilityHost.ps1. The deployment workflow applies the account and
+# subnet first, runs that idempotent helper, and then applies this project capability host.
 # Purging the Foundry account removes it.
 
 resource "azapi_resource" "project_capability_host" {

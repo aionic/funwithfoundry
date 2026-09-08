@@ -27,5 +27,19 @@ function Show-Scm {
     Write-Output ""
 }
 
-Show-Scm -Label 'latest deployment' -Path '/api/deployments/latest'
-Show-Scm -Label 'deployment log' -Path '/api/deployments/latest/log'
+$latest = $null
+try {
+    $response = Invoke-WebRequest -Uri "https://$FunctionApp.scm.azurewebsites.net/api/deployments/latest" `
+        -Headers $headers -TimeoutSec 120 -UseBasicParsing
+    $latest = $response.Content | ConvertFrom-Json
+    Write-Output '=== latest deployment'
+    Write-Output $response.Content
+    Write-Output ''
+}
+catch {
+    Write-Output "Could not read latest deployment: $($_.Exception.Message)"
+}
+
+if ($latest.id) {
+    Show-Scm -Label 'deployment log' -Path "/api/deployments/$($latest.id)/log"
+}

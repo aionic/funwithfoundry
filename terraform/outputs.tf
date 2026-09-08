@@ -57,6 +57,16 @@ output "foundry_primary" {
   }
 }
 
+output "foundry_primary_account_id" {
+  description = "ARM ID of the primary Foundry account, used by the capability-host deployment step."
+  value       = module.foundry_primary.foundry_id
+}
+
+output "foundry_agent_subnet_id" {
+  description = "ARM ID of the network-injected agent subnet."
+  value       = module.spoke_primary.subnet_ids["snet-agent"]
+}
+
 output "foundry_secondary" {
   description = "Content Understanding instance in the secondary region."
   value = {
