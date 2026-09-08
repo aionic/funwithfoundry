@@ -1,0 +1,63 @@
+flowchart TB
+    operator["Operator"]
+    sharepoint["SharePoint Online<br/>Document source"]
+
+    subgraph azure_subscription["Azure subscription"]
+        subgraph scus_paas["South Central US - PaaS resources"]
+            function_app["Azure Functions<br/>Ingestion orchestration"]
+            staging_storage["Storage account<br/>Private staging"]
+            content_understanding["Microsoft Foundry<br/>Content Understanding"]
+        end
+
+        subgraph scus_vnet["South Central US spoke VNet"]
+            function_integration["Function integration subnet"]
+            staging_pe["Blob private endpoint"]
+            content_pe["Foundry private endpoint"]
+        end
+
+        subgraph secured_vwan["Secured Virtual WAN"]
+            scus_firewall["Azure Firewall<br/>South Central US hub"]
+            cus_firewall["Azure Firewall<br/>Central US hub"]
+        end
+
+        subgraph cus_vnet["Central US spoke VNet"]
+            jumpbox["Jumpbox<br/>Managed identity"]
+            agent_subnet["Agent injection subnet<br/>Microsoft.App/environments"]
+            search_pe["Search private endpoint"]
+            foundry_pe["Foundry private endpoint"]
+        end
+
+        subgraph cus_paas["Central US - PaaS resources"]
+            search["Azure AI Search<br/>Index and knowledge base"]
+            foundry_account["Microsoft Foundry account<br/>Models and project"]
+            hosted_agent["Hosted agent<br/>gpt-4o with AI Search tool"]
+        end
+    end
+
+    function_app ---|VNet integration| function_integration
+    function_integration -->|1. HTTPS Microsoft Graph<br/>public egress| scus_firewall
+    scus_firewall -->|1. Document request| sharepoint
+    function_app -->|2. HTTPS blob write| staging_pe
+    staging_pe --> staging_storage
+    function_app -->|3. analyzeBinary over HTTPS| content_pe
+    content_pe --> content_understanding
+    function_app -->|4. Index markdown over HTTPS| scus_firewall
+    scus_firewall --> cus_firewall
+    cus_firewall --> search_pe
+    search_pe --> search
+
+    operator -->|5. Private test invocation| jumpbox
+    jumpbox -->|6. Agent request over HTTPS| foundry_pe
+    foundry_pe --> foundry_account
+    foundry_account --- agent_subnet
+    foundry_account --> hosted_agent
+    hosted_agent -->|7. azure_ai_search tool| search_pe
+    search -->|Query planner via approved<br/>shared private link| foundry_account
+    hosted_agent -->|8. Grounded answer with citation| jumpbox
+
+    classDef external fill:#f7f7f7,stroke:#555,color:#111
+    classDef private fill:#dceefe,stroke:#2472a4,color:#111
+    classDef paas fill:#e5f4e3,stroke:#327a37,color:#111
+    class operator,sharepoint external
+    class function_integration,staging_pe,content_pe,jumpbox,agent_subnet,search_pe,foundry_pe,scus_firewall,cus_firewall private
+    class function_app,staging_storage,content_understanding,search,foundry_account,hosted_agent paas

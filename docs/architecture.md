@@ -1,56 +1,59 @@
 # Architecture
 
+This lab separates capabilities by region rather than providing regional failover. Central US hosts
+the network-injected Agents platform, AI Search, agent state, and model deployments. South Central
+US hosts Content Understanding and the ingestion Function. Secured Virtual WAN provides controlled
+cross-region transit.
+
+The authoritative Mermaid contracts are the
+[runtime flow](diagrams/runtime-flow-azure-architecture.mmd) and
+[capability-host deployment flow](diagrams/capability-host-deployment-azure-architecture.mmd).
+
 ## Verified data path
 
 ```mermaid
-flowchart TB
-    SPO["SharePoint Online<br/><i>public Graph API</i>"]
+flowchart LR
+    SPO["SharePoint Online"]
+    FUNC["Function<br/>South Central US"]
+    CU["Content Understanding<br/>South Central US"]
+    FW2["SCUS Azure Firewall"]
+    FW1["CUS Azure Firewall"]
+    SEARCH["AI Search<br/>Central US"]
+    FOUNDRY["Foundry Agents<br/>Central US"]
+    USER["Operator on jumpbox"]
 
-    subgraph CUS["Central US — vnet-fwf-cus"]
-        JB["Jumpbox<br/>10.10.2.x"]
-        BAS["Bastion Standard<br/>10.10.3.0/26"]
-        AGENT["snet-agent 172.16.0.0/24<br/>delegated Microsoft.App/environments"]
-        subgraph PECUS["snet-pe 10.10.1.0/24"]
-            FOUNDRY["Foundry account<br/>network-injected"]
-            SEARCH["AI Search S1<br/>semantic ranker"]
-            COSMOS["Cosmos 6000 RU/s"]
-            STOR["Storage"]
-            KV["Key Vault"]
-        end
-    end
-
-    subgraph HUBS["Virtual WAN Standard"]
-        FW1["AzFW — hub CUS<br/>10.100.0.0/23"]
-        FW2["AzFW — hub SCUS<br/>10.101.0.0/23"]
-    end
-
-    subgraph SCUS["South Central US — vnet-fwf-scus"]
-        FUNC["snet-func 10.20.2.0/24<br/>delegated (unused)"]
-        subgraph PESCUS["snet-pe 10.20.1.0/24"]
-            CU["Content Understanding"]
-            STAGE["Staging blob"]
-        end
-    end
-
-    SPO -.->|"public egress<br/>via firewall"| FW1
-    BAS --> JB
-    JB --> PECUS
-    JB -->|"private, RFC1918"| FW1
-    FW1 <-->|"hub-to-hub"| FW2
-    FW2 --> PESCUS
-    CU -->|"markdown"| SEARCH
-    SEARCH -->|"shared private link<br/>groupId openai_account"| FOUNDRY
-    FOUNDRY --- AGENT
-    SEARCH --- KB["Foundry IQ<br/>knowledge base"]
-
-    classDef pub fill:#8b2020,stroke:#ff6b6b,color:#fff
-    classDef priv fill:#1f3a5f,stroke:#4a9eff,color:#fff
-    class SPO pub
-    class FOUNDRY,SEARCH,COSMOS,STOR,KV,CU,STAGE priv
+    FUNC -.->|"Graph HTTPS - not yet exercised"| SPO
+    FUNC -->|"analyzeBinary over private endpoint"| CU
+    FUNC -->|"Index markdown"| FW2
+    FW2 -->|"Secured vWAN transit"| FW1
+    FW1 -->|"Private endpoint"| SEARCH
+    USER -->|"Private agent request"| FOUNDRY
+    FOUNDRY -->|"azure_ai_search tool"| SEARCH
+    SEARCH -->|"Approved shared private link"| FOUNDRY
 ```
 
-**Red is the only public hop.** The SharePoint fetch leaves Azure over the internet. Everything
-downstream stays on private endpoints.
+The SharePoint edge is dashed because it is the intended public ingress leg but remains untested.
+The verified synthetic proof begins with a generated document on the jumpbox, then exercises
+Content Understanding, cross-region indexing, Foundry IQ retrieval, and the hosted agent.
+
+## Capability-host deployment flow
+
+```mermaid
+flowchart LR
+    APPLY1["1. Terraform targeted apply"] --> ACCOUNT["Injected Foundry account"]
+    SUBNET["Dedicated delegated /24"] --> ACCOUNT
+    ACCOUNT --> ENSURE["2. Ensure-AgentCapabilityHost.ps1"]
+    ENSURE --> AH["Account Agents host<br/>platform-generated name"]
+    AH --> APPLY2["3. Terraform full apply"]
+    APPLY2 --> PROJECT["Project and managed identity"]
+    APPLY2 --> CONNS["Search, Storage, Cosmos connections"]
+    PROJECT --> PH["Project Agents host"]
+    CONNS --> PH
+    PH --> TEST["4. Hosted agent and AI Search tool proof"]
+```
+
+The account host is intentionally managed by the idempotent helper because Azure stores the
+singleton under a platform-generated name. Terraform owns the project host and its dependencies.
 
 ## The two non-obvious things
 
@@ -67,16 +70,33 @@ needs both `Cognitive Services OpenAI User` on the Foundry account and an approv
 link with `groupId = openai_account` — not `account`, despite that being the only group the Foundry
 account advertises.
 
+**Data-service authentication is keyless.** Foundry, AI Search, Storage, and Cosmos DB disable local
+or shared-key authentication. Terraform uses Entra ID for storage data-plane operations, and the
+Function, jumpbox, Search planner, project, and hosted agent use managed identities plus scoped
+Azure RBAC. The jumpbox still has a generated local administrator password for Bastion RDP.
+
 ## What is proven vs. assumed
 
 | Claim | Status |
 |---|---|
-| All private endpoint FQDNs resolve privately in-VNet | Verified — 9/9 |
-| Cross-region CUS → SCUS on 443 via both hub firewalls | Verified |
-| Public workstation refused on data plane | Verified — 403 on all three |
-| Content Understanding available in South Central US | Verified — analyzer list + `analyzeBinary` |
-| Document → CU → Search → Foundry IQ → grounded answer | Verified — answer with citation |
-| Capability hosts provisioned | Verified — both `Succeeded` |
-| SharePoint → blob leg | **Not exercised** — needs Graph `Sites.Selected` consent |
-| Flex Consumption Function | **Not deployed** — pipeline proven from the jumpbox instead |
-| Bastion RDP under routing intent | **Not tested** — validation used `az vm run-command` |
+| Control-plane deployment | Verified 2026-09-08 - 24 PASS, 0 WARN, 0 FAIL |
+| Terraform convergence | Verified 2026-09-08 - zero drift after keyless Search hardening |
+| All private endpoint FQDNs resolve privately in-VNet | Verified - 9/9 |
+| Cross-region private HTTPS through both hub firewalls | Verified |
+| Public workstation refused on data plane | Verified - HTTP 403 |
+| Content Understanding in South Central US | Verified - analyzer list and `analyzeBinary` |
+| Generated document to CU to Search to Foundry IQ | Verified - grounded answer with citation |
+| Account and project Agents capability hosts | Verified - both `Succeeded` |
+| Hosted `gpt-4o` agent with `azure_ai_search` | Verified - run completed with grounded citation |
+| AI Search local/API-key authentication | Disabled and regression-tested with Entra ID flows |
+| Flex Consumption Function deployment | Verified - package active and `ingest` trigger synchronized |
+| SharePoint Graph fetch through the Function | **Not exercised** - needs Graph `Sites.Selected` consent |
+| Bastion RDP under routing intent | **Not tested** - validation used `az vm run-command` |
+
+## Deliberate limitations
+
+- This is capability placement across two regions, not active-active or disaster recovery.
+- AI Search uses one replica and Cosmos DB uses one non-zone-redundant region.
+- Customer-managed keys, AMPLS, centralized diagnostics, CI/CD, and a production SLO are excluded.
+- `gpt-5.2` is the Foundry IQ planner; tool-calling hosted agents use `gpt-4o` because the tested
+    `gpt-5.2` plus `azure_ai_search` combination fails with an opaque service error.

@@ -49,8 +49,12 @@ foreach ($t in $targets) {
     foreach ($item in @($items)) {
         $detail = Get-Json @('resource', 'show', '--ids', $item.id, '-o', 'json')
         $pna = $detail.properties.publicNetworkAccess
-        $status = if ("$pna" -in @('Disabled', 'SecuredByPerimeter')) { 'PASS' } else { 'FAIL' }
-        Add-Check "$($t.label): $($item.name)" $status "publicNetworkAccess=$pna"
+        $isPrivate = "$pna" -in @('Disabled', 'SecuredByPerimeter')
+        $isSearch = $t.type -eq 'Microsoft.Search/searchServices'
+        $localAuthDisabled = $detail.properties.disableLocalAuth
+        $status = if ($isPrivate -and (-not $isSearch -or $localAuthDisabled)) { 'PASS' } else { 'FAIL' }
+        $authDetail = if ($isSearch) { " disableLocalAuth=$localAuthDisabled" } else { '' }
+        Add-Check "$($t.label): $($item.name)" $status "publicNetworkAccess=$pna$authDetail"
     }
 }
 

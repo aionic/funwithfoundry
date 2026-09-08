@@ -1,0 +1,53 @@
+flowchart TB
+    operator["Operator<br/>Owner role active"]
+
+    subgraph phase_one["Phase 1 - immutable network injection"]
+        terraform_target["Terraform targeted apply"]
+        network["Central US spoke VNet<br/>Dedicated /24 agent subnet"]
+        foundry_account["Microsoft Foundry account<br/>Network injection set at creation"]
+    end
+
+    subgraph account_host_phase["Phase 2 - account capability host"]
+        ensure_script["Ensure-AgentCapabilityHost.ps1<br/>Idempotent ARM operation"]
+        account_host["Account capability host<br/>Agents / platform-generated name"]
+    end
+
+    subgraph full_apply["Phase 3 - project and dependencies"]
+        terraform_apply["Terraform full apply"]
+        project["Foundry project<br/>System-assigned identity"]
+        connections["Project connections<br/>Search / Storage / Cosmos DB"]
+        rbac["Entra ID and Azure RBAC<br/>No data-service shared keys"]
+        project_host["Project capability host<br/>Agents"]
+    end
+
+    subgraph proof["Functional proof"]
+        agent_test["Hosted gpt-4o agent"]
+        search_tool["azure_ai_search tool"]
+        grounded_answer["Completed run<br/>Grounded answer and citation"]
+    end
+
+    operator -->|1. Apply account prerequisites| terraform_target
+    terraform_target --> network
+    network -->|Dedicated delegated subnet| foundry_account
+    terraform_target --> foundry_account
+    operator -->|2. Ensure singleton host| ensure_script
+    foundry_account --> ensure_script
+    ensure_script --> account_host
+    operator -->|3. Complete deployment| terraform_apply
+    account_host -->|Must exist first| terraform_apply
+    terraform_apply --> project
+    terraform_apply --> connections
+    terraform_apply --> rbac
+    project --> project_host
+    connections --> project_host
+    rbac --> project_host
+    project_host -->|4. Create and run| agent_test
+    agent_test --> search_tool
+    search_tool --> grounded_answer
+
+    classDef action fill:#f7f7f7,stroke:#555,color:#111
+    classDef control fill:#dceefe,stroke:#2472a4,color:#111
+    classDef resource fill:#e5f4e3,stroke:#327a37,color:#111
+    class operator,terraform_target,ensure_script,terraform_apply action
+    class network,connections,rbac control
+    class foundry_account,account_host,project,project_host,agent_test,search_tool,grounded_answer resource

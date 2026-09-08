@@ -53,6 +53,10 @@ resource "azurerm_storage_account" "this" {
     bypass         = ["AzureServices"]
   }
 
+  lifecycle {
+    ignore_changes = [network_rules[0].private_link_access]
+  }
+
   tags = var.tags
 }
 
@@ -115,12 +119,7 @@ resource "azapi_resource" "search" {
       # semantic ranker, so it is enabled here deliberately.
       semanticSearch = "standard"
 
-      disableLocalAuth = false
-      authOptions = {
-        aadOrApiKey = {
-          aadAuthFailureMode = "http401WithBearerChallenge"
-        }
-      }
+      disableLocalAuth = true
 
       publicNetworkAccess = "Disabled"
       networkRuleSet = {

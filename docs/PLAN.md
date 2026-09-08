@@ -1,4 +1,8 @@
-# funwithfoundry — private Foundry lab (Central US + South Central US over secured vWAN)
+# funwithfoundry - private Foundry lab (Central US + South Central US over secured vWAN)
+
+**Implementation status:** Deployed and verified on 2026-09-08. Use the [README](../README.md)
+for deployment commands and [architecture](architecture.md) for the current proof matrix and
+diagram links. This file preserves design decisions, constraints, and residual risks.
 
 > Persisted here because VS Code repo memory requires the folder to be open as a workspace.
 > Once `d:\git\funwithfoundry` is opened as the workspace, mirror this into `/memories/repo/`.
@@ -15,7 +19,7 @@ Understanding in SCUS, and pushes the result into the private AI Search index in
 **across the vWAN**. Foundry IQ serves it to an agent queried from a Bastion-fronted
 Windows jumpbox. All Terraform (single root, local modules, local state). Tracked in beads.
 
-## Environment (verified 2026-08-28)
+## Environment (verified 2026-09-08)
 
 - Subscription: `<your-subscription-name>` / `<your-subscription-id>`
 - Tenant / MG root: `<your-tenant-id>`
@@ -34,8 +38,9 @@ Windows jumpbox. All Terraform (single root, local modules, local state). Tracke
 ## Locked decisions
 
 Secured hubs (Azure Firewall Standard in both regions, routing intent) · Content Understanding
-pipeline as the ingestion showcase · Flex Consumption for the glue · single Terraform root with
-local state · Windows Server 2025 jumpbox + Bastion Standard · `Standard_D4s_v5`.
+pipeline as the ingestion showcase · Flex Consumption for the glue · Entra-only data-service
+authentication · single Terraform root with local state · Windows Server 2025 jumpbox + Bastion
+Standard · `Standard_D4s_v5`.
 
 Explicitly excluded: CMK, AMPLS, multi-region failover, CI/CD, Copilot Studio.
 
@@ -57,7 +62,10 @@ Explicitly excluded: CMK, AMPLS, multi-region failover, CI/CD, Copilot Studio.
 ## Hard constraints — do not relearn these
 
 1. **Network injection must be set at Foundry account creation.** It cannot be added later for hosted agents.
-2. **Capability hosts are immutable.** Changing one means deleting and recreating the project.
+2. **Capability hosts are immutable and order-dependent.** The account host must exist before the
+    project host. Azure renames the account singleton to `<account>@aml_aiagentservice`, so
+    `scripts/Ensure-AgentCapabilityHost.ps1` manages it idempotently outside Terraform state.
+    Terraform manages the project host.
 3. **Standard agent setup requires all three BYO resources** (Storage + AI Search + Cosmos NoSQL),
    or capability host creation fails.
 4. **Cosmos needs ≥3000 RU/s** — five containers × 1000. Using 6000.
@@ -128,8 +136,19 @@ Explicitly excluded: CMK, AMPLS, multi-region failover, CI/CD, Copilot Studio.
     data-plane call distinguishes reachable from blocked.
 27. **The Search API returns 400s with empty bodies to PowerShell.** Use `curl.exe` to see the real
     error text; several hours of guesswork collapse into one readable message.
+28. **Data-service local authentication is disabled.** Foundry sets `disableLocalAuth = true`,
+    Storage sets `shared_access_key_enabled = false`, Cosmos DB sets
+    `local_authentication_enabled = false`, and AI Search sets `disableLocalAuth = true`.
+    Terraform storage data-plane calls require `storage_use_azuread = true`.
+29. **Use `gpt-4o` for hosted agents with the `azure_ai_search` tool.** The identical tested agent
+    on `gpt-5.2` fails every run with an opaque service error. `gpt-5.2` remains valid as the
+    Foundry IQ knowledge-base planner and for agents without tools.
+30. **An AzAPI Search update temporarily makes exported identity values unknown during planning.**
+    A plan can therefore propose replacing the unchanged Search-to-Foundry role assignment. Apply
+    the Search resource first, then rerun the full plan instead of accepting unrelated replacement
+    or service-managed storage-network-rule drift.
 
-## Verified end to end (2026-08-29)
+## Verified end to end (2026-09-08)
 
 `scripts/jumpbox/Invoke-EndToEnd.ps1` and `Ask-KnowledgeBase.ps1` prove the full path:
 
@@ -140,6 +159,16 @@ Explicitly excluded: CMK, AMPLS, multi-region failover, CI/CD, Copilot Studio.
 - Document → Content Understanding (SCUS) → AI Search index (CUS, across the vWAN) → Foundry IQ
   knowledge base → grounded retrieval returning the answer with a citation
 - All three data-plane endpoints return 403 from a public workstation
+- Terraform converged with zero drift after the AI Search keyless-auth apply
+- `scripts/Verify-Deployment.ps1` returned 24 PASS, 0 WARN, 0 FAIL
+- Account and project `Agents` capability hosts both reached `Succeeded`
+- The Function package deployed and the `ingest` trigger synchronized
+- A hosted `gpt-4o` agent invoked `azure_ai_search` and completed with a grounded citation
+- AI Search local authentication was disabled; Entra-authenticated indexing, Foundry IQ retrieval,
+  and the hosted-agent Search tool all passed afterward
+
+The synthetic end-to-end proof bypasses SharePoint and the Function by generating a document on the
+jumpbox. Function deployment is proven; its SharePoint-triggered application path is not.
 
 ## Reference implementation
 
@@ -173,7 +202,10 @@ Use `bd ready` to drive the run.
 4. The Azure Firewall FQDN allowlist for Container Apps drifts with platform versions; expect iteration.
 5. **Bastion RDP under routing intent is still untested.** All validation ran through
    `az vm run-command`, which does not traverse the Bastion data path.
-6. The **account** capability host is not Terraform-managed (constraint in the module comment).
+6. The **account** capability host is not Terraform-managed; the idempotent helper is a required
+    deployment phase because Azure renames the singleton.
+7. The Function's SharePoint-triggered path still needs Graph consent and an end-to-end run with a
+    real SharePoint document; current regression coverage starts with a generated document.
 
 ## Cost
 

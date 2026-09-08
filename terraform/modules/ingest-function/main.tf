@@ -58,6 +58,10 @@ resource "azurerm_storage_account" "func" {
     bypass         = ["AzureServices"]
   }
 
+  lifecycle {
+    ignore_changes = [network_rules[0].private_link_access]
+  }
+
   tags = var.tags
 }
 
