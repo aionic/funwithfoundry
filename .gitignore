@@ -1,0 +1,52 @@
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.plan
+tfplan*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+terraform.tfvars
+!terraform.tfvars.example
+
+# Azure / secrets
+.azure/
+*.pem
+*.key
+*.pfx
+*.publishsettings
+local.settings.json
+
+# Preflight artifacts
+scripts/preflight-results.csv
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Azure Functions
+bin/
+obj/
+.func/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Terraform run logs
+*.log

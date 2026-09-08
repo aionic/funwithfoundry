@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars and adjust. terraform.tfvars is gitignored.
+
+subscription_id = "00000000-0000-0000-0000-000000000000"
+
+prefix           = "fwf"
+primary_region   = "centralus"
+secondary_region = "southcentralus"
+
+jumpbox_size           = "Standard_D4s_v5"
+jumpbox_admin_username = "fwfadmin"
+
+# Leave empty to use the identity running Terraform.
+my_object_id = ""
+
+tags = {
+  workload    = "funwithfoundry"
+  environment = "lab"
+  managed_by  = "terraform"
+}

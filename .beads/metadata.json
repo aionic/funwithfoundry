@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "funwithfoundry",
+  "project_id": "8d2d681c-0ef2-4e7e-a32c-2cb14156700b"
+}
