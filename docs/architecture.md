@@ -62,6 +62,9 @@ flowchart LR
 
 The account host is intentionally managed by the idempotent helper because Azure stores the
 singleton under a platform-generated name. Terraform owns the project host and its dependencies.
+The delegated agent subnet name is limited to 62 characters because longer names trigger a
+Foundry platform failure during account capability-host creation; both Terraform and the helper
+script reject an invalid name earlier.
 
 ## The two non-obvious things
 

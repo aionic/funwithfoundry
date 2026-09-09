@@ -49,6 +49,10 @@ $agentSubnetId = terraform $terraformChdir output -raw foundry_agent_subnet_id
 if ($LASTEXITCODE -ne 0 -or -not $agentSubnetId) {
     throw 'Could not resolve foundry_agent_subnet_id. Apply the primary spoke first.'
 }
+$agentSubnetName = ($agentSubnetId.TrimEnd('/') -split '/')[-1]
+if ($agentSubnetName.Length -gt 62) {
+    throw "Foundry agent subnet name '$agentSubnetName' is $($agentSubnetName.Length) characters; capability-host creation requires 62 or fewer."
+}
 
 $collectionUrl = "https://management.azure.com$accountId/capabilityHosts?api-version=$ApiVersion"
 $deadline = (Get-Date).Add($Timeout)

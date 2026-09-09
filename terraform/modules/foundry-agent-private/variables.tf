@@ -19,8 +19,13 @@ variable "tenant_id" {
 }
 
 variable "agent_subnet_id" {
-  description = "Subnet delegated to Microsoft.App/environments. Exclusive to this Foundry account."
+  description = "Subnet delegated to Microsoft.App/environments. Exclusive to this Foundry account; its name must not exceed 62 characters."
   type        = string
+
+  validation {
+    condition     = length(basename(trimsuffix(var.agent_subnet_id, "/"))) <= 62
+    error_message = "The Foundry agent subnet name must be 62 characters or fewer; longer names fail during capability-host creation."
+  }
 }
 
 variable "private_endpoint_subnet_id" {

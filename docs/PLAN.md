@@ -73,6 +73,9 @@ Explicitly excluded: CMK, AMPLS, multi-region failover, CI/CD, Copilot Studio.
 6. **The Foundry resource must be in the same region as its VNet.** Cosmos, Search, and Storage may differ.
 7. **The agent subnet is exclusive per Foundry account**, /24 recommended, RFC1918 only. Avoid
    `169.254/16`, `172.30/16`, `172.31/16`, `192.0.2/24`, `100.64.0.0/11`, `100.100.0.0/17`.
+    **Its subnet resource name must be 62 characters or fewer.** A Foundry platform bug rejects
+    longer delegated subnet names only when the account capability host is created. Terraform and
+    `scripts/Ensure-AgentCapabilityHost.ps1` enforce the limit before that late failure.
    **The agent subnet uses `172.16.0.0/24` (Class B), not Class A.** Learn's region table says
    Class A (10.x) is fine in Central US, but the official 15b BYO-VNet sample README lists a
    fixed region subset that *excludes* Central US, and Learn's own troubleshooting documents the

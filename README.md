@@ -93,7 +93,8 @@ terraform -chdir=terraform init
 terraform -chdir=terraform apply -target='module.foundry_primary.azapi_resource.foundry'
 
 # Azure stores the account-level Agents capability host under a platform-generated
-# name, so this idempotent helper owns that one control-plane operation.
+# name, so this idempotent helper owns that one control-plane operation. The
+# delegated agent subnet name must be 62 characters or fewer.
 pwsh -NoProfile -File .\scripts\Ensure-AgentCapabilityHost.ps1
 
 # 5. Complete the graph, including the project-level Agents capability host
