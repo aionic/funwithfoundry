@@ -19,7 +19,9 @@ flowchart LR
     FW2["SCUS Azure Firewall"]
     FW1["CUS Azure Firewall"]
     SEARCH["AI Search<br/>Central US"]
-    FOUNDRY["Foundry Agents<br/>Central US"]
+    AGENT["Native hosted agent<br/>Responses protocol"]
+    IQ["Foundry IQ<br/>knowledge base"]
+    TOOLBOX["Foundry Toolbox<br/>simple Search query"]
     USER["Operator on jumpbox"]
 
     FUNC -.->|"Graph HTTPS - not yet exercised"| SPO
@@ -27,14 +29,18 @@ flowchart LR
     FUNC -->|"Index markdown"| FW2
     FW2 -->|"Secured vWAN transit"| FW1
     FW1 -->|"Private endpoint"| SEARCH
-    USER -->|"Private agent request"| FOUNDRY
-    FOUNDRY -->|"azure_ai_search tool"| SEARCH
-    SEARCH -->|"Approved shared private link"| FOUNDRY
+    USER -->|"Private agent request"| AGENT
+    AGENT -->|"retrieve_foundry_iq"| IQ
+    AGENT -->|"fwf...search tool"| TOOLBOX
+    IQ --> SEARCH
+    TOOLBOX --> SEARCH
+    SEARCH -->|"Planner via approved shared private link"| AGENT
 ```
 
 The SharePoint edge is dashed because it is the intended public ingress leg but remains untested.
 The verified synthetic proof begins with a generated document on the jumpbox, then exercises
-Content Understanding, cross-region indexing, Foundry IQ retrieval, and the hosted agent.
+Content Understanding, cross-region indexing, Foundry IQ retrieval, and both native-agent
+retrieval branches.
 
 ## Capability-host deployment flow
 
@@ -49,7 +55,9 @@ flowchart LR
     APPLY2 --> CONNS["Search, Storage, Cosmos connections"]
     PROJECT --> PH["Project Agents host"]
     CONNS --> PH
-    PH --> TEST["4. Hosted agent and AI Search tool proof"]
+    PH --> TOOLBOX["4. Versioned Search toolbox"]
+    TOOLBOX --> AGENT["5. Native Python hosted agent"]
+    AGENT --> TEST["6. Dual-tool Responses proof"]
 ```
 
 The account host is intentionally managed by the idempotent helper because Azure stores the
@@ -79,15 +87,17 @@ Azure RBAC. The jumpbox still has a generated local administrator password for B
 
 | Claim | Status |
 |---|---|
-| Control-plane deployment | Verified 2026-09-08 - 24 PASS, 0 WARN, 0 FAIL |
-| Terraform convergence | Verified 2026-09-08 - zero drift after keyless Search hardening |
+| Control-plane deployment | Verified 2026-09-09 - 24 PASS, 0 WARN, 0 FAIL |
+| Terraform convergence | Verified 2026-09-09 - zero drift |
 | All private endpoint FQDNs resolve privately in-VNet | Verified - 9/9 |
 | Cross-region private HTTPS through both hub firewalls | Verified |
 | Public workstation refused on data plane | Verified - HTTP 403 |
 | Content Understanding in South Central US | Verified - analyzer list and `analyzeBinary` |
 | Generated document to CU to Search to Foundry IQ | Verified - grounded answer with citation |
 | Account and project Agents capability hosts | Verified - both `Succeeded` |
-| Hosted `gpt-4o` agent with `azure_ai_search` | Verified - run completed with grounded citation |
+| Native hosted agent version 5 | Verified - active with `python main.py` and Responses `2.0.0` |
+| Foundry IQ plus native Search toolbox | Verified - both tools returned the same indexed source |
+| Exact grounded validation answer | Verified - `BLUE-HERON-42`, subnet rationale, and Sources |
 | AI Search local/API-key authentication | Disabled and regression-tested with Entra ID flows |
 | Flex Consumption Function deployment | Verified - package active and `ingest` trigger synchronized |
 | SharePoint Graph fetch through the Function | **Not exercised** - needs Graph `Sites.Selected` consent |
@@ -98,5 +108,4 @@ Azure RBAC. The jumpbox still has a generated local administrator password for B
 - This is capability placement across two regions, not active-active or disaster recovery.
 - AI Search uses one replica and Cosmos DB uses one non-zone-redundant region.
 - Customer-managed keys, AMPLS, centralized diagnostics, CI/CD, and a production SLO are excluded.
-- `gpt-5.2` is the Foundry IQ planner; tool-calling hosted agents use `gpt-4o` because the tested
-    `gpt-5.2` plus `azure_ai_search` combination fails with an opaque service error.
+- `gpt-5.2` is the Foundry IQ planner; the native tool-orchestration agent uses `gpt-4o`.

@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: funwithfoundry
+services:
+    funwithfoundry-rag-agent:
+        project: ./src/foundry_native_agent
+        host: azure.ai.agent
+        language: python
+        uses:
+            - fwf1wj5gproj
+        env:
+            FOUNDRY_PROJECT_ENDPOINT: ${FOUNDRY_PROJECT_ENDPOINT}
+            AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+            SEARCH_ENDPOINT: ${SEARCH_ENDPOINT}
+            FOUNDRY_IQ_KNOWLEDGE_BASE: ${FOUNDRY_IQ_KNOWLEDGE_BASE}
+            TOOLBOX_NAME: foundry-rag
+        codeConfiguration:
+            dependencyResolution: remote_build
+            entryPoint: main.py
+            runtime: python_3_13
+        container:
+            resources:
+                cpu: "1"
+                memory: 2Gi
+        kind: hosted
+        name: funwithfoundry-rag-agent
+        displayName: Fun with Foundry IQ Agent
+        description: Native hosted agent that grounds answers through Foundry IQ and the private AI Search index.
+        protocols:
+            - protocol: responses
+              version: 2.0.0
+    fwf1wj5gproj:
+        host: azure.ai.project
+        endpoint: https://fwf1wj5gfoundry.services.ai.azure.com/api/projects/fwf1wj5gproj
+infra:
+    provider: microsoft.foundry

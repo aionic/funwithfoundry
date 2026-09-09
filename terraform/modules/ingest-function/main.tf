@@ -137,6 +137,7 @@ resource "azurerm_function_app_flex_consumption" "this" {
 
   virtual_network_subnet_id     = var.function_subnet_id
   public_network_access_enabled = false
+  https_only                    = true
 
   webdeploy_publish_basic_authentication_enabled = false
 

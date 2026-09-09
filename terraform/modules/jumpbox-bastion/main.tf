@@ -61,12 +61,13 @@ resource "azurerm_windows_virtual_machine" "jumpbox" {
   tags                  = var.tags
 
   # 2025-datacenter-azure-edition is hotpatch-enabled and rejects any other patch mode.
-  patch_mode = "AutomaticByPlatform"
+  patch_mode                                             = "AutomaticByPlatform"
+  bypass_platform_safety_checks_on_user_schedule_enabled = true
 
   # No public IP by design - Bastion is the only way in.
   os_disk {
     caching              = "ReadWrite"
-    storage_account_type = "Premium_LRS"
+    storage_account_type = "Standard_LRS"
   }
 
   source_image_reference {

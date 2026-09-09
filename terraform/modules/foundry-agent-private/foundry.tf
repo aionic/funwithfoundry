@@ -305,6 +305,13 @@ resource "azurerm_role_assignment" "search_service_contributor" {
   depends_on           = [time_sleep.project_identity]
 }
 
+resource "azurerm_role_assignment" "project_foundry_user" {
+  scope                = azapi_resource.project.id
+  role_definition_name = "Foundry User"
+  principal_id         = local.project_principal_id
+  depends_on           = [time_sleep.project_identity]
+}
+
 resource "time_sleep" "rbac_propagation" {
   depends_on = [
     azurerm_role_assignment.cosmos_operator,
@@ -312,6 +319,7 @@ resource "time_sleep" "rbac_propagation" {
     azurerm_role_assignment.storage_blob_contributor,
     azurerm_role_assignment.search_index_contributor,
     azurerm_role_assignment.search_service_contributor,
+    azurerm_role_assignment.project_foundry_user,
   ]
   create_duration = "90s"
 }

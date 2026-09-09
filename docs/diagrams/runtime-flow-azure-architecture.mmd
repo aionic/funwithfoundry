@@ -30,7 +30,9 @@ flowchart TB
         subgraph cus_paas["Central US - PaaS resources"]
             search["Azure AI Search<br/>Index and knowledge base"]
             foundry_account["Microsoft Foundry account<br/>Models and project"]
-            hosted_agent["Hosted agent<br/>gpt-4o with AI Search tool"]
+            hosted_agent["Native hosted agent<br/>Python / Responses protocol"]
+            foundry_iq["Foundry IQ<br/>Knowledge base"]
+            toolbox["Foundry Toolbox<br/>Simple Search query"]
         end
     end
 
@@ -51,7 +53,10 @@ flowchart TB
     foundry_pe --> foundry_account
     foundry_account --- agent_subnet
     foundry_account --> hosted_agent
-    hosted_agent -->|7. azure_ai_search tool| search_pe
+    hosted_agent -->|7a. retrieve_foundry_iq| foundry_iq
+    hosted_agent -->|7b. Toolbox Search tool| toolbox
+    foundry_iq --> search_pe
+    toolbox --> search_pe
     search -->|Query planner via approved<br/>shared private link| foundry_account
     hosted_agent -->|8. Grounded answer with citation| jumpbox
 
@@ -60,4 +65,4 @@ flowchart TB
     classDef paas fill:#e5f4e3,stroke:#327a37,color:#111
     class operator,sharepoint external
     class function_integration,staging_pe,content_pe,jumpbox,agent_subnet,search_pe,foundry_pe,scus_firewall,cus_firewall private
-    class function_app,staging_storage,content_understanding,search,foundry_account,hosted_agent paas
+    class function_app,staging_storage,content_understanding,search,foundry_account,hosted_agent,foundry_iq,toolbox paas

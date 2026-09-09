@@ -1,6 +1,6 @@
 # funwithfoundry - private Foundry lab (Central US + South Central US over secured vWAN)
 
-**Implementation status:** Deployed and verified on 2026-09-08. Use the [README](../README.md)
+**Implementation status:** Deployed and verified on 2026-09-09. Use the [README](../README.md)
 for deployment commands and [architecture](architecture.md) for the current proof matrix and
 diagram links. This file preserves design decisions, constraints, and residual risks.
 
@@ -19,7 +19,7 @@ Understanding in SCUS, and pushes the result into the private AI Search index in
 **across the vWAN**. Foundry IQ serves it to an agent queried from a Bastion-fronted
 Windows jumpbox. All Terraform (single root, local modules, local state). Tracked in beads.
 
-## Environment (verified 2026-09-08)
+## Environment (verified 2026-09-09)
 
 - Subscription: `<your-subscription-name>` / `<your-subscription-id>`
 - Tenant / MG root: `<your-tenant-id>`
@@ -147,8 +147,14 @@ Explicitly excluded: CMK, AMPLS, multi-region failover, CI/CD, Copilot Studio.
     A plan can therefore propose replacing the unchanged Search-to-Foundry role assignment. Apply
     the Search resource first, then rerun the full plan instead of accepting unrelated replacement
     or service-managed storage-network-rule drift.
+31. **A text-only index must set the native Search toolbox to `query_type: simple`.** The toolbox
+    default is `vector_semantic_hybrid`; without a vector field it returns a tool error even though
+    the connection, private network, and RBAC are correct.
+32. **The direct-code entrypoint must match the hosting style.** `hosting.run` requires a packaged
+    `langgraph.json`. This lab instead uses `entryPoint: main.py`, loads toolbox tools asynchronously,
+    and starts `ResponsesHostServer` directly.
 
-## Verified end to end (2026-09-08)
+## Verified end to end (2026-09-09)
 
 `scripts/jumpbox/Invoke-EndToEnd.ps1` and `Ask-KnowledgeBase.ps1` prove the full path:
 
@@ -163,7 +169,9 @@ Explicitly excluded: CMK, AMPLS, multi-region failover, CI/CD, Copilot Studio.
 - `scripts/Verify-Deployment.ps1` returned 24 PASS, 0 WARN, 0 FAIL
 - Account and project `Agents` capability hosts both reached `Succeeded`
 - The Function package deployed and the `ingest` trigger synchronized
-- A hosted `gpt-4o` agent invoked `azure_ai_search` and completed with a grounded citation
+- New Foundry native hosted agent version 5 completed through the Responses protocol
+- The exact validation prompt invoked both Foundry IQ and toolbox Search, and both returned the
+    same indexed architecture note with `BLUE-HERON-42` and the subnet rationale
 - AI Search local authentication was disabled; Entra-authenticated indexing, Foundry IQ retrieval,
   and the hosted-agent Search tool all passed afterward
 

@@ -44,6 +44,17 @@ variable "my_object_id" {
   default     = ""
 }
 
+variable "native_agent_principal_id" {
+  description = "Object ID of the deployed native hosted agent identity. Leave empty until its first deployment."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.native_agent_principal_id == "" || can(regex("^[0-9a-fA-F-]{36}$", var.native_agent_principal_id))
+    error_message = "native_agent_principal_id must be empty or a UUID."
+  }
+}
+
 variable "tags" {
   description = "Tags applied to every resource."
   type        = map(string)

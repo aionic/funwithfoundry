@@ -45,6 +45,7 @@ output "jumpbox_admin_password" {
 output "foundry_primary" {
   description = "Private agent platform in the primary region. Endpoints resolve only inside the VNet."
   value = {
+    location         = var.primary_region
     account          = module.foundry_primary.foundry_name
     project          = module.foundry_primary.project_name
     project_endpoint = module.foundry_primary.project_endpoint
@@ -60,6 +61,11 @@ output "foundry_primary" {
 output "foundry_primary_account_id" {
   description = "ARM ID of the primary Foundry account, used by the capability-host deployment step."
   value       = module.foundry_primary.foundry_id
+}
+
+output "foundry_primary_project_id" {
+  description = "ARM ID of the primary Foundry project, used by native agent deployment tooling."
+  value       = module.foundry_primary.project_id
 }
 
 output "foundry_agent_subnet_id" {

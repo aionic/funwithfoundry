@@ -174,6 +174,28 @@ resource "azurerm_role_assignment" "jumpbox_foundry_primary" {
   principal_id         = module.jumpbox.jumpbox_principal_id
 }
 
+resource "azurerm_role_assignment" "jumpbox_foundry_project_manager" {
+  scope                = module.foundry_primary.project_id
+  role_definition_name = "Foundry Project Manager"
+  principal_id         = module.jumpbox.jumpbox_principal_id
+}
+
+resource "azurerm_role_assignment" "native_agent_foundry_user" {
+  count = var.native_agent_principal_id == "" ? 0 : 1
+
+  scope                = module.foundry_primary.project_id
+  role_definition_name = "Foundry User"
+  principal_id         = var.native_agent_principal_id
+}
+
+resource "azurerm_role_assignment" "native_agent_search_reader" {
+  count = var.native_agent_principal_id == "" ? 0 : 1
+
+  scope                = module.foundry_primary.search_id
+  role_definition_name = "Search Index Data Reader"
+  principal_id         = var.native_agent_principal_id
+}
+
 resource "azurerm_role_assignment" "jumpbox_foundry_secondary" {
   scope                = module.foundry_secondary.foundry_id
   role_definition_name = "Cognitive Services User"

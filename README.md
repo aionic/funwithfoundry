@@ -14,14 +14,17 @@ approval, and Foundry IQ data-plane objects.
 
 ## Deployment status
 
-Verified on 2026-09-08:
+Verified on 2026-09-09:
 
 - Terraform converged with zero drift after deployment.
 - `scripts/Verify-Deployment.ps1` returned 24 PASS, 0 WARN, 0 FAIL.
 - Account and project `Agents` capability hosts reached `Succeeded`.
 - The Function package deployed and its `ingest` trigger synchronized.
-- Private DNS, cross-region HTTPS, Content Understanding, AI Search indexing, Foundry IQ grounded
-  retrieval, and a hosted `gpt-4o` agent using `azure_ai_search` all completed successfully.
+- Private DNS, cross-region HTTPS, Content Understanding, AI Search indexing, and Foundry IQ
+  grounded retrieval all completed successfully.
+- New Foundry native hosted agent `funwithfoundry-rag-agent:5` completed through the Responses
+  protocol and called both Foundry IQ and the `foundry-rag:2` Search toolbox. Both paths returned
+  the same private indexed document and the final answer included the expected source.
 
 The SharePoint Graph fetch and an interactive Bastion RDP session remain untested. The synthetic
 end-to-end test starts with a generated document on the jumpbox.
@@ -53,7 +56,8 @@ starts at the Function, and this repo is explicit about where that line sits.
 
 The intended ingestion flow is SharePoint to the VNet-integrated Function, private staging storage,
 Content Understanding in South Central US, and AI Search in Central US across the secured vWAN.
-Foundry IQ and the hosted agent then retrieve from Search privately. See the
+The native hosted agent then retrieves from Search privately through both Foundry IQ and a
+versioned Foundry Toolbox. See the
 [runtime flow](docs/diagrams/runtime-flow-azure-architecture.mmd) and
 [capability-host deployment flow](docs/diagrams/capability-host-deployment-azure-architecture.mmd).
 
@@ -67,7 +71,8 @@ than leaving the vWAN as expensive decoration.
 | `terraform/` | Single root; local modules under `terraform/modules/` |
 | `scripts/` | Preflight, backlog bootstrap, RBAC, Foundry IQ setup, teardown |
 | `src/ingest_func/` | Flex Consumption Function driving the ingestion pipeline |
-| `src/hello_world/` | Agent query client |
+| `src/foundry_native_agent/` | New Foundry native hosted-agent source |
+| `src/hello_world/` | Native Responses API query client |
 | `docs/diagrams/` | Reviewable Mermaid architecture contracts |
 | `docs/PLAN.md` | Architecture, address plan, and the hard constraints |
 
@@ -97,6 +102,9 @@ terraform -chdir=terraform apply
 # 6. Approve Search's outbound shared private link and deploy Function code
 pwsh -NoProfile -File .\scripts\Approve-SharedPrivateLink.ps1
 pwsh -NoProfile -File .\scripts\Deploy-IngestFunction.ps1
+
+# 7. From inside the private VNet, deploy the Search toolbox and native hosted agent
+pwsh -NoProfile -File .\scripts\Deploy-NativeFoundryAgent.ps1
 ```
 
 The `azurerm` provider already sets `storage_use_azuread = true`. Storage, Cosmos DB, Foundry,
@@ -116,9 +124,9 @@ pwsh -NoProfile -File .\scripts\Invoke-JumpboxScript.ps1 -Script Invoke-FoundryA
 ```
 
 `Invoke-EndToEnd.ps1` uses a generated document and proves Content Understanding to Search to
-Foundry IQ. It does not prove the SharePoint Graph leg. `Invoke-FoundryAgent.ps1` uses `gpt-4o`
-because `gpt-5.2` currently fails when the `azure_ai_search` tool is attached, although it works as
-the Foundry IQ knowledge-base planner.
+Foundry IQ. It does not prove the SharePoint Graph leg. `Invoke-FoundryAgent.ps1` invokes the New
+Foundry native agent and fails unless its Responses trace contains both the Foundry IQ tool and the
+Search toolbox tool. The toolbox uses `query_type: simple` because this lab's index is text-only.
 
 Retrieve the jumpbox password only when interactive RDP is needed:
 

@@ -21,9 +21,11 @@ flowchart TB
     end
 
     subgraph proof["Functional proof"]
-        agent_test["Hosted gpt-4o agent"]
-        search_tool["azure_ai_search tool"]
-        grounded_answer["Completed run<br/>Grounded answer and citation"]
+        toolbox["Foundry Toolbox<br/>Search query_type simple"]
+        agent_test["Native Python hosted agent<br/>Responses protocol"]
+        iq_tool["Foundry IQ retrieval"]
+        search_tool["Toolbox Search retrieval"]
+        grounded_answer["Completed response<br/>Both tools and one source"]
     end
 
     operator -->|1. Apply account prerequisites| terraform_target
@@ -41,8 +43,11 @@ flowchart TB
     project --> project_host
     connections --> project_host
     rbac --> project_host
-    project_host -->|4. Create and run| agent_test
+    project_host -->|4. Deploy toolbox| toolbox
+    toolbox -->|5. Deploy and run| agent_test
+    agent_test --> iq_tool
     agent_test --> search_tool
+    iq_tool --> grounded_answer
     search_tool --> grounded_answer
 
     classDef action fill:#f7f7f7,stroke:#555,color:#111
@@ -50,4 +55,4 @@ flowchart TB
     classDef resource fill:#e5f4e3,stroke:#327a37,color:#111
     class operator,terraform_target,ensure_script,terraform_apply action
     class network,connections,rbac control
-    class foundry_account,account_host,project,project_host,agent_test,search_tool,grounded_answer resource
+    class foundry_account,account_host,project,project_host,toolbox,agent_test,iq_tool,search_tool,grounded_answer resource

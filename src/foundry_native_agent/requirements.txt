@@ -1,0 +1,9 @@
+langchain-azure-ai[hosting]>=1.2.9
+azure-ai-projects>=2.0.1
+azure-identity==1.25.3
+langchain
+langchain-openai
+langchain-mcp-adapters
+mcp>=1.24,<2
+httpx<1
+openai<3

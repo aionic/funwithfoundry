@@ -1,0 +1,3 @@
+{"query":"What is the maintenance window code, and why is the agent subnet 172.16.0.0/24?","expected_behavior":"Call retrieve_foundry_iq and fwf1wj5gsearch with the full question, reconcile both results, return BLUE-HERON-42 and the documented subnet rationale, and include Sources."}
+{"query":"What is the maintenance window code?","expected_behavior":"Call both retrieval tools, preserve the exact code BLUE-HERON-42, and include Sources."}
+{"query":"Why does the agent subnet use 172.16.0.0/24?","expected_behavior":"Call both retrieval tools and explain that the subnet is delegated to Microsoft.App/environments and avoids contradictory Central US Class A guidance, with Sources."}
