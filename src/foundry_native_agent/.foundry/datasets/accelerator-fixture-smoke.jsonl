@@ -1,0 +1,3 @@
+{"query":"What is the fictional launch date for Project Cedar?","expected_behavior":"Call retrieve_foundry_iq then the configured Search toolbox tool with the full question, validate both successful outputs, answer 15 October 2026, and include retrieved sources."}
+{"query":"How long are fictional Project Cedar staging documents retained?","expected_behavior":"Call both required retrieval tools with the full question, validate successful outputs, answer 30 days, and include retrieved sources."}
+{"query":"What is the approved budget for fictional Project Cedar?","expected_behavior":"Call both required retrieval tools with the full question, state that the retrieved evidence does not provide an approved budget, and do not invent a monetary amount."}

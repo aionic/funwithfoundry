@@ -1,3 +1,11 @@
+output "subscription_id" {
+  value = var.subscription_id
+}
+
+output "tenant_id" {
+  value = data.azurerm_client_config.current.tenant_id
+}
+
 output "resource_groups" {
   value = {
     network   = azurerm_resource_group.net.name
@@ -45,16 +53,18 @@ output "jumpbox_admin_password" {
 output "foundry_primary" {
   description = "Private agent platform in the primary region. Endpoints resolve only inside the VNet."
   value = {
-    location         = var.primary_region
-    account          = module.foundry_primary.foundry_name
-    project          = module.foundry_primary.project_name
-    project_endpoint = module.foundry_primary.project_endpoint
-    search           = module.foundry_primary.search_name
-    search_endpoint  = module.foundry_primary.search_endpoint
-    storage          = module.foundry_primary.storage_account_name
-    cosmos           = module.foundry_primary.cosmos_account_name
-    key_vault        = module.foundry_primary.key_vault_name
-    agent_tool_model = module.foundry_primary.agent_tool_model_name
+    location           = var.primary_region
+    account            = module.foundry_primary.foundry_name
+    project            = module.foundry_primary.project_name
+    project_endpoint   = module.foundry_primary.project_endpoint
+    search             = module.foundry_primary.search_name
+    search_endpoint    = module.foundry_primary.search_endpoint
+    storage            = module.foundry_primary.storage_account_name
+    cosmos             = module.foundry_primary.cosmos_account_name
+    key_vault          = module.foundry_primary.key_vault_name
+    agent_tool_model   = module.foundry_primary.agent_tool_model_name
+    planner_deployment = module.foundry_primary.planner_deployment
+    planner_model      = module.foundry_primary.planner_model
   }
 }
 
@@ -85,6 +95,8 @@ output "foundry_secondary" {
 
 output "ingest_function" {
   value = {
+    api_client_id   = module.ingest_function.ingestion_api_client_id
+    api_scope       = module.ingest_function.ingestion_api_scope
     name            = module.ingest_function.function_app_name
     hostname        = module.ingest_function.default_hostname
     identity_client = module.ingest_function.identity_client_id

@@ -33,9 +33,11 @@ finally {
 
 $o = $raw | ConvertFrom-Json
 
-# Outputs carry no subscription id of their own; take it from the signed-in context.
-$subId = az account show --query id -o tsv
-if (-not $subId) { throw 'Could not resolve the subscription id from the Azure CLI context.' }
+$accountId = [string]$o.foundry_primary_account_id.value
+if ($accountId -notmatch '^/subscriptions/([^/]+)/resourceGroups/') { throw 'Foundry account output does not contain a subscription-bound ARM ID.' }
+$subId = $Matches[1]
+$selectedSubscription = az account show --query id -o tsv
+if ($LASTEXITCODE -ne 0 -or $selectedSubscription -ne $subId) { throw 'Azure CLI subscription must match the Terraform deployment before running lab operations.' }
 
 $rg = $o.resource_groups.value
 $p = $o.foundry_primary.value
@@ -60,6 +62,8 @@ $lab = [pscustomobject]@{
         ProjectEndpoint = $p.project_endpoint
         SearchEndpoint  = $p.search_endpoint
         AgentToolModel  = $p.agent_tool_model
+        PlannerDeployment = $p.planner_deployment
+        PlannerModel      = $p.planner_model
     }
     Secondary          = [pscustomobject]@{
         Account        = $s.account
@@ -82,6 +86,8 @@ $lab = [pscustomobject]@{
         Hostname       = $o.ingest_function.value.hostname
         IdentityClient = $o.ingest_function.value.identity_client
         IdentityObject = $o.ingest_function.value.identity_object
+        ApiClientId    = $o.ingest_function.value.api_client_id
+        ApiScope       = $o.ingest_function.value.api_scope
     }
     Hosts              = [pscustomobject]@{
         FoundryServices = "$($p.account).services.ai.azure.com"

@@ -7,8 +7,7 @@
          On its own this grants access to NO sites.
       2. Grant that identity read on one specific site.
 
-    Sites.Selected is preferred over Sites.Read.All because the latter grants tenant-wide
-    read of every SharePoint site.
+    No tenant-wide permission is assigned when site consent is unavailable.
 #>
 [CmdletBinding()]
 param(
@@ -19,11 +18,46 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+function Invoke-GraphRequest {
+    param([string]$Uri, [string]$Method = 'get', [object]$Body)
+    $tmp = $null
+    try {
+        $arguments = @('rest', '--method', $Method, '--url', $Uri, '-o', 'json')
+        if ($null -ne $Body) {
+            $tmp = [System.IO.Path]::GetTempFileName()
+            [System.IO.File]::WriteAllText($tmp, ($Body | ConvertTo-Json -Depth 10 -Compress))
+            $arguments += @('--headers', 'Content-Type=application/json', '--body', "@$tmp")
+        }
+        $response = & az @arguments
+        if ($LASTEXITCODE -ne 0) { throw "Graph $Method failed (exit $LASTEXITCODE)." }
+        if ($response) { $response | ConvertFrom-Json }
+    }
+    finally {
+        if ($tmp) { Remove-Item -LiteralPath $tmp -Force }
+    }
+}
+
+function Get-GraphCollection {
+    param([string]$Uri)
+    while ($Uri) {
+        $page = Invoke-GraphRequest -Uri $Uri
+        if ($null -eq $page.value) { throw 'Graph collection response is missing value.' }
+        $page.value
+        $Uri = $page.'@odata.nextLink'
+        if ($Uri -and -not $Uri.StartsWith('https://graph.microsoft.com/v1.0/')) {
+            throw 'Unexpected Graph pagination URL.'
+        }
+    }
+}
+
 $lab = & (Join-Path $PSScriptRoot 'Get-LabEnvironment.ps1') -TerraformDir $TerraformDir
+if ($LASTEXITCODE -ne 0) { throw 'Lab environment lookup failed.' }
 
 Push-Location $TerraformDir
 try {
-    $fn = terraform output -json ingest_function | ConvertFrom-Json
+    $output = terraform output -json ingest_function
+    if ($LASTEXITCODE -ne 0) { throw "Terraform output failed (exit $LASTEXITCODE)." }
+    $fn = $output | ConvertFrom-Json
 }
 finally {
     Pop-Location
@@ -32,46 +66,25 @@ finally {
 $principalId = $fn.identity_object
 $graphAppId = '00000003-0000-0000-c000-000000000000'
 
+if (-not $principalId -or -not $fn.identity_client -or -not $lab.SharePoint.Hostname) {
+    throw 'Terraform must resolve the function identity and configured SharePoint site.'
+}
 Write-Host "Function identity: $principalId" -ForegroundColor Cyan
 
-# --- 1. Sites.Selected app role -----------------------------------------------
-# $Role is a parameter; use a distinct name here or its ValidateSet rejects the object.
-$graphSp = az ad sp show --id $graphAppId -o json | ConvertFrom-Json
-$appRole = $graphSp.appRoles | Where-Object { $_.value -eq 'Sites.Selected' -and $_.allowedMemberTypes -contains 'Application' }
-if (-not $appRole) { throw 'Sites.Selected app role not found on Microsoft Graph.' }
+$graphOutput = az ad sp show --id $graphAppId -o json
+if ($LASTEXITCODE -ne 0) { throw "Graph service principal lookup failed (exit $LASTEXITCODE)." }
+$graphSp = $graphOutput | ConvertFrom-Json
+$appRoles = @($graphSp.appRoles | Where-Object {
+    $_.value -eq 'Sites.Selected' -and $_.allowedMemberTypes -contains 'Application' -and $_.isEnabled
+})
+if (-not $graphSp.id -or $appRoles.Count -ne 1) { throw 'Expected one enabled Sites.Selected application role on Microsoft Graph.' }
+$appRole = $appRoles[0]
+$assignmentsUri = "https://graph.microsoft.com/v1.0/servicePrincipals/$principalId/appRoleAssignments"
+$existing = @(Get-GraphCollection -Uri $assignmentsUri)
+$assigned = @($existing | Where-Object {
+    $_.principalId -eq $principalId -and $_.resourceId -eq $graphSp.id -and $_.appRoleId -eq $appRole.id
+})
 
-$existing = az rest --method get `
-    --url "https://graph.microsoft.com/v1.0/servicePrincipals/$principalId/appRoleAssignments" `
-    -o json 2>$null | ConvertFrom-Json
-
-if ($existing.value | Where-Object { $_.appRoleId -eq $appRole.id }) {
-    Write-Host 'Sites.Selected already assigned.' -ForegroundColor DarkGray
-}
-else {
-    $body = @{
-        principalId = $principalId
-        resourceId  = $graphSp.id
-        appRoleId   = $appRole.id
-    } | ConvertTo-Json -Compress
-
-    $tmp = Join-Path $env:TEMP 'approle.json'
-    [System.IO.File]::WriteAllText($tmp, $body)
-
-    az rest --method post `
-        --url "https://graph.microsoft.com/v1.0/servicePrincipals/$principalId/appRoleAssignments" `
-        --headers 'Content-Type=application/json' `
-        --body "@$tmp" -o none
-    Write-Host 'Sites.Selected assigned.' -ForegroundColor Green
-}
-
-# --- 2. Scope it to a single site ---------------------------------------------
-# Writing /sites/{id}/permissions needs Sites.FullControl.All. The Azure CLI's
-# first-party client does not carry that delegated scope, and being Global Admin does
-# not change which scopes a client app was consented. If this fails we fall back to
-# Sites.Read.All so the function can actually read the document.
-#
-# Production path: grant the site permission with an app that holds
-# Sites.FullControl.All (client credentials), then Sites.Selected stays least-privilege.
 $hostname = $lab.SharePoint.Hostname
 $sitePath = $lab.SharePoint.SitePath
 
@@ -82,50 +95,35 @@ else {
     "https://graph.microsoft.com/v1.0/sites/${hostname}:$sitePath"
 }
 
-$site = az rest --method get --url $siteUrl -o json | ConvertFrom-Json
-Write-Host "Site: $($site.displayName) ($($site.id))" -ForegroundColor Cyan
-
-$permBody = @{
-    roles               = @($Role)
-    grantedToIdentities = @(
-        @{ application = @{ id = $fn.identity_client; displayName = $fn.name } }
-    )
-} | ConvertTo-Json -Depth 10 -Compress
-
-$permTmp = Join-Path $env:TEMP 'siteperm.json'
-[System.IO.File]::WriteAllText($permTmp, $permBody)
-
-az rest --method post `
-    --url "https://graph.microsoft.com/v1.0/sites/$($site.id)/permissions" `
-    --headers 'Content-Type=application/json' `
-    --body "@$permTmp" -o none 2>$null
-
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "Granted '$Role' on $($site.displayName) - Sites.Selected is correctly scoped." -ForegroundColor Green
-    return
+try {
+    $site = Invoke-GraphRequest -Uri $siteUrl
+    if (-not $site.id) { throw 'Graph did not resolve the configured site.' }
+    $permissionsUri = "https://graph.microsoft.com/v1.0/sites/$($site.id)/permissions"
+    $permissions = @(Get-GraphCollection -Uri $permissionsUri)
+    $matching = @($permissions | Where-Object {
+        $identities = @($_.grantedToIdentitiesV2) + @($_.grantedToIdentities) + @($_.grantedToV2) + @($_.grantedTo)
+        @($identities.application.id) -contains $fn.identity_client
+    })
+    if ($matching.Count -gt 1 -or ($matching.Count -eq 1 -and
+        (@($matching[0].roles).Count -ne 1 -or $matching[0].roles[0] -ne $Role))) {
+        throw "Existing site permissions do not match the single requested '$Role' grant. Have the site administrator reconcile them before rerunning."
+    }
+    if ($assigned.Count -eq 0) {
+        $null = Invoke-GraphRequest -Uri $assignmentsUri -Method post -Body @{
+            principalId = $principalId
+            resourceId = $graphSp.id
+            appRoleId = $appRole.id
+        }
+    }
+    if ($matching.Count -eq 0) {
+        $null = Invoke-GraphRequest -Uri $permissionsUri -Method post -Body @{
+            roles = @($Role)
+            grantedToIdentities = @(@{ application = @{ id = $fn.identity_client; displayName = $fn.name } })
+        }
+    }
+}
+catch {
+    throw "Site-scoped consent failed. Use an administrator-approved Graph client authorized to manage site permissions (Sites.FullControl.All on the consenting client, not the function), grant '$Role' only on the configured site to client $($fn.identity_client), then rerun. No tenant-wide fallback is attempted. $($_.Exception.Message)"
 }
 
-Write-Host 'Could not write the site permission (needs Sites.FullControl.All).' -ForegroundColor Yellow
-Write-Host 'Falling back to the Sites.Read.All app role: tenant-wide SharePoint READ.' -ForegroundColor Yellow
-
-$readAll = $graphSp.appRoles | Where-Object { $_.value -eq 'Sites.Read.All' -and $_.allowedMemberTypes -contains 'Application' }
-if ($existing.value | Where-Object { $_.appRoleId -eq $readAll.id }) {
-    Write-Host 'Sites.Read.All already assigned.' -ForegroundColor DarkGray
-    return
-}
-
-$readBody = @{
-    principalId = $principalId
-    resourceId  = $graphSp.id
-    appRoleId   = $readAll.id
-} | ConvertTo-Json -Compress
-
-$readTmp = Join-Path $env:TEMP 'approle-readall.json'
-[System.IO.File]::WriteAllText($readTmp, $readBody)
-
-az rest --method post `
-    --url "https://graph.microsoft.com/v1.0/servicePrincipals/$principalId/appRoleAssignments" `
-    --headers 'Content-Type=application/json' `
-    --body "@$readTmp" -o none
-
-Write-Host 'Sites.Read.All assigned.' -ForegroundColor Green
+[pscustomobject]@{ Outcome = 'Succeeded'; SiteId = $site.id; ClientId = $fn.identity_client; Role = $Role }

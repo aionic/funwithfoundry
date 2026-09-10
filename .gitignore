@@ -37,6 +37,7 @@ scripts/preflight-results.csv
 __pycache__/
 *.py[cod]
 .venv/
+.venv-*/
 venv/
 
 # Azure Functions

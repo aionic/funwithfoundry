@@ -1,0 +1,8 @@
+{
+  "name": "funwithfoundry-repository-checks",
+  "private": true,
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "11.12.0",
+    "markdownlint-cli2": "0.18.1"
+  }
+}

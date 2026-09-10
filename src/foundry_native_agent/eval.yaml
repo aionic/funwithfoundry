@@ -2,7 +2,7 @@ name: native-dual-path-smoke
 agent:
   name: funwithfoundry-rag-agent
   kind: hosted
-dataset_file: .foundry/datasets/native-dual-path-smoke.jsonl
+dataset_file: .foundry/datasets/accelerator-fixture-smoke.jsonl
 evaluators:
   - name: builtin.task_adherence
   - name: builtin.tool_call_accuracy

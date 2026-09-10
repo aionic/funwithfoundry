@@ -122,6 +122,11 @@ module "foundry_secondary" {
 module "ingest_function" {
   source = "./modules/ingest-function"
 
+  tenant_id = data.azurerm_client_config.current.tenant_id
+  authorized_caller_principal_ids = {
+    jumpbox = module.jumpbox.jumpbox_principal_id
+  }
+
   prefix              = var.prefix
   resource_group_name = azurerm_resource_group.secondary.name
   location            = var.secondary_region

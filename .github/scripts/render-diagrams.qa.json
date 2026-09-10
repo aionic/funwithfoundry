@@ -1,0 +1,18 @@
+{
+  "method": "Final exported PNGs opened with view_image",
+  "scope": "Diagram presentation and approved-contract fidelity only; no live Azure verification",
+  "diagrams": [
+    {
+      "file": "docs/diagrams/capability-host-deployment-azure-architecture.png",
+      "sha256": "866c42b34ed6ac7d1e8770ac248d4ce79aeffe7cb898f8013a6055de36a29375",
+      "result": "Inspected",
+      "observations": "Original icons visible; labels readable and uncropped; regional, VNet and subnet boundaries intact; control paths dashed; dense transit crossings remain distinguishable."
+    },
+    {
+      "file": "docs/diagrams/runtime-flow-azure-architecture.png",
+      "sha256": "5172803cc1de480bd6c4181656d11dd9d7451374e933cc1b717cb575f3f286d4",
+      "result": "Inspected",
+      "observations": "Numbered ingestion and retrieval paths visible; IQ and toolbox remain separate; result gate, both failure branches, tool-free synthesis and source metadata retained; labels and official icons readable and uncropped."
+    }
+  ]
+}

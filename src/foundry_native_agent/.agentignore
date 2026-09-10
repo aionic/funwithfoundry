@@ -28,6 +28,26 @@ venv/
 .mypy_cache/
 .pytest_cache/
 
+.foundry/
+eval/
+eval.*
+eval-*
+eval_*
+evaluation/
+evaluations/
+fixtures/
+test/
+tests/
+test_*.py
+*_test.py
+datasets/
+benchmark/
+benchmarks/
+results/
+coverage/
+.coverage*
+htmlcov/
+
 # .NET
 bin/
 obj/

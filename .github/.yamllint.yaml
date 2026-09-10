@@ -1,0 +1,6 @@
+extends: relaxed
+rules:
+  line-length: disable
+  new-lines: disable
+  truthy:
+    allowed-values: ['true', 'false', 'on']

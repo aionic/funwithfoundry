@@ -1,0 +1,4947 @@
+{
+  "schemaVersion": 1,
+  "status": "Approved design, not live deployment evidence",
+  "rendererHashes": {
+    "render-diagrams.mjs": "615465ea7799f010f0019dc0bb71e8407203b31d140df6f77de9196b1b3d3eaa",
+    "render-diagrams.layout.mjs": "8066e43aac31307c058651878fdc3ea919df1256948cb5927a9aa9ac95a0e5dd",
+    "render-diagrams.assets.ps1": "4bcfb5018229dcfdabbeeecdb241d7ff32784325dca2f2af7324b268b9cc2c40"
+  },
+  "browser": "Chrome/131.0.6778.204",
+  "node": "v23.2.0",
+  "assets": {
+    "source": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+    "archiveUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+    "archiveSha256": "921594ccd1bf3d9c0a1bd7b6d924e050551a59342f2b353bb74bdcf761c35141",
+    "artwork": "Original SVG bytes, unmodified. Architectural documentation use only; Microsoft reserves all other rights.",
+    "assets": [
+      {
+        "file": "docs/diagrams/assets/035746832-icon-service-AI-Foundry.svg",
+        "archiveEntry": "Azure_Public_Service_Icons/Icons/ai + machine learning/035746832-icon-service-AI-Foundry.svg",
+        "sha256": "fab039a771f72780ae34e59065d61c66a02d3c347d50923ef2956f34912ea02c"
+      },
+      {
+        "file": "docs/diagrams/assets/038470497-icon-service-Azure-AI-Foundry-IQ.svg",
+        "archiveEntry": "Azure_Public_Service_Icons/Icons/ai + machine learning/038470497-icon-service-Azure-AI-Foundry-IQ.svg",
+        "sha256": "245e33416ecc1c745bfff6f72ebf1ffa04cfee1cdd0c1b1b8970d0844409c9c7"
+      },
+      {
+        "file": "docs/diagrams/assets/038470614-icon-service-Foundry-Models.svg",
+        "archiveEntry": "Azure_Public_Service_Icons/Icons/ai + machine learning/038470614-icon-service-Foundry-Models.svg",
+        "sha256": "9c671f141cb0e19b62e004628183ed8711ad16ec3b2e56b14c3cd035d5fac711"
+      },
+      {
+        "file": "docs/diagrams/assets/10044-icon-service-Cognitive-Search.svg",
+        "archiveEntry": "Azure_Public_Service_Icons/Icons/ai + machine learning/10044-icon-service-Cognitive-Search.svg",
+        "sha256": "f7af1213ce089236593835cb5564d6d3f01358cba6488fe562aa8bbc8adc3b38"
+      },
+      {
+        "file": "docs/diagrams/assets/10021-icon-service-Virtual-Machine.svg",
+        "archiveEntry": "Azure_Public_Service_Icons/Icons/compute/10021-icon-service-Virtual-Machine.svg",
+        "sha256": "092d18ffadec9ec0e5af129186dc7bc2a80544011e55f965604ed4b13873e0fc"
+      },
+      {
+        "file": "docs/diagrams/assets/10029-icon-service-Function-Apps.svg",
+        "archiveEntry": "Azure_Public_Service_Icons/Icons/compute/10029-icon-service-Function-Apps.svg",
+        "sha256": "1a6c9c108d5f63f7b78bc6fbc464059acd2eaa8c1d111e9bcd28a8b2cdf470b9"
+      },
+      {
+        "file": "docs/diagrams/assets/10121-icon-service-Azure-Cosmos-DB.svg",
+        "archiveEntry": "Azure_Public_Service_Icons/Icons/databases/10121-icon-service-Azure-Cosmos-DB.svg",
+        "sha256": "b6f1f2afac15762d1de44366d34984c5a3e6e58f94d9e81407ac01565212e8e3"
+      },
+      {
+        "file": "docs/diagrams/assets/10245-icon-service-Key-Vaults.svg",
+        "archiveEntry": "Azure_Public_Service_Icons/Icons/security/10245-icon-service-Key-Vaults.svg",
+        "sha256": "712b426f54f0fc50d0816dc79df709daa7ac5f93ccaf4e9b3527f627f6e9ad97"
+      },
+      {
+        "file": "docs/diagrams/assets/10086-icon-service-Storage-Accounts.svg",
+        "archiveEntry": "Azure_Public_Service_Icons/Icons/storage/10086-icon-service-Storage-Accounts.svg",
+        "sha256": "7190d3bb14ce30ce74bd0af873915830fe821e8c5f6ef6f3149e6f7cfb2aa4f7"
+      },
+      {
+        "file": "docs/diagrams/assets/02579-icon-service-Private-Endpoints.svg",
+        "archiveEntry": "Azure_Public_Service_Icons/Icons/other/02579-icon-service-Private-Endpoints.svg",
+        "sha256": "96de0bb7f0aeb1220d0fd6d337578d5e93dca017d6ea7d42d887aa329b2fd90d"
+      },
+      {
+        "file": "docs/diagrams/assets/02422-icon-service-Bastions.svg",
+        "archiveEntry": "Azure_Public_Service_Icons/Icons/networking/02422-icon-service-Bastions.svg",
+        "sha256": "7d3c33e355b9e180bb96491492ff856e379c27b3e7920526e2552c9b1593d3cb"
+      },
+      {
+        "file": "docs/diagrams/assets/10084-icon-service-Firewalls.svg",
+        "archiveEntry": "Azure_Public_Service_Icons/Icons/networking/10084-icon-service-Firewalls.svg",
+        "sha256": "154c416cc15b95b7c6c1ab61a5ecb33f14845197b7d163bd9dc6f1968c14be1e"
+      },
+      {
+        "file": "docs/diagrams/assets/10064-icon-service-DNS-Zones.svg",
+        "archiveEntry": "Azure_Public_Service_Icons/Icons/networking/10064-icon-service-DNS-Zones.svg",
+        "sha256": "e6aaa1380e974af7d0aba1bb8380ecfab3f95182a595a28692aa3f963bcf9fac"
+      },
+      {
+        "file": "docs/diagrams/assets/00427-icon-service-Private-Link.svg",
+        "archiveEntry": "Azure_Public_Service_Icons/Icons/networking/00427-icon-service-Private-Link.svg",
+        "sha256": "9990bbce78fc1ef3838fbe86e2ff3b297e721b1f6a6d037b4d3f3ce9abf4a5a2"
+      }
+    ]
+  },
+  "visualInspection": {
+    "record": ".github/scripts/render-diagrams.qa.json",
+    "rule": "Valid only when inspected PNG hashes match; never inferred from automated checks"
+  },
+  "diagrams": [
+    {
+      "slug": "capability-host-deployment",
+      "sha256": "df09d439f0d4ac75799d3067dd9b3aed5f1b2ea780dab5ba10862f8b6298decf",
+      "title": "Private infrastructure & deployment",
+      "source": "docs/diagrams/capability-host-deployment-azure-architecture.mmd",
+      "file": "docs/diagrams/capability-host-deployment-azure-architecture.png",
+      "width": 3840,
+      "height": 2160,
+      "outputSha256": "866c42b34ed6ac7d1e8770ac248d4ce79aeffe7cb898f8013a6055de36a29375",
+      "inventory": {
+        "nodes": [
+          {
+            "id": "operator",
+            "label": "Approved operator or trusted CI\nTerraform and staged orchestration",
+            "classes": [
+              "control"
+            ]
+          },
+          {
+            "id": "arm",
+            "label": "Azure Resource Manager\nInfrastructure and VM Run Command",
+            "classes": [
+              "control"
+            ]
+          },
+          {
+            "id": "entra",
+            "label": "Microsoft Entra ID\nAPI app and Ingestion.Invoke role",
+            "classes": [
+              "control"
+            ]
+          },
+          {
+            "id": "bastion",
+            "label": "Azure Bastion Standard",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "jumpbox",
+            "label": "Windows jumpbox\nAuthorized managed identity",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "injected_compute",
+            "label": "Platform-managed agent compute\nInjected outbound execution",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "foundry_pe",
+            "label": "Foundry account PE",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "search_pe",
+            "label": "Search PE",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "state_pe",
+            "label": "State-service PEs\nBlob, Cosmos DB, Key Vault",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "foundry",
+            "label": "Microsoft Foundry PaaS\nAccount, project, hosted agent, toolbox",
+            "classes": [
+              "paas"
+            ]
+          },
+          {
+            "id": "models",
+            "label": "Foundry model deployments\nGlobalStandard, processing not region-pinned",
+            "classes": [
+              "paas"
+            ]
+          },
+          {
+            "id": "search",
+            "label": "Azure AI Search PaaS\nText index and IQ planner",
+            "classes": [
+              "paas"
+            ]
+          },
+          {
+            "id": "shared_link",
+            "label": "Search-managed shared private link\nApproved openai_account",
+            "classes": [
+              "paas"
+            ]
+          },
+          {
+            "id": "state",
+            "label": "Azure PaaS dependencies\nStorage, Cosmos DB, Key Vault",
+            "classes": [
+              "paas"
+            ]
+          },
+          {
+            "id": "cus_firewall",
+            "label": "Central US hub\nAzure Firewall Standard",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "scus_firewall",
+            "label": "South Central US hub\nAzure Firewall Standard",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "function_integration",
+            "label": "Function outbound VNet integration",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "function_pe",
+            "label": "Function app and SCM PE",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "cu_pe",
+            "label": "Content Understanding PE",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "storage_pe",
+            "label": "Storage PEs\nStaging and Function host storage",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "function_app",
+            "label": "Azure Functions PaaS\nFlex Consumption ingestion API",
+            "classes": [
+              "paas"
+            ]
+          },
+          {
+            "id": "cu",
+            "label": "Microsoft Foundry PaaS\nContent Understanding and model deployments",
+            "classes": [
+              "paas"
+            ]
+          },
+          {
+            "id": "storage",
+            "label": "Azure Storage PaaS\nStaging and Function host storage",
+            "classes": [
+              "paas"
+            ]
+          },
+          {
+            "id": "dns",
+            "label": "Private DNS zones\nLinked to both spokes",
+            "classes": [
+              "control"
+            ]
+          },
+          {
+            "id": "public_graph",
+            "label": "Public Microsoft Graph / SharePoint\nOptional site-scoped source",
+            "classes": [
+              "control"
+            ]
+          },
+          {
+            "id": "legend",
+            "label": "Solid: initiating runtime dependency\nDashed: control plane, identity or association as labeled\nTwo regions separate capabilities, not HA or failover\nBroad firewall allowlist is POC policy, not zero-trust\nTelemetry and installer egress omitted; no AMPLS",
+            "classes": [
+              "control"
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "L_operator_arm_0",
+            "source": "operator",
+            "target": "arm",
+            "label": "Deployment; ARM permissions",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_operator_entra_0",
+            "source": "operator",
+            "target": "entra",
+            "label": "Separate tenant permissions",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_arm_foundry_0",
+            "source": "arm",
+            "target": "foundry",
+            "label": "Account injection, account host, then project host",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_arm_jumpbox_0",
+            "source": "arm",
+            "target": "jumpbox",
+            "label": "Run Command; trusted scripts only",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_entra_jumpbox_0",
+            "source": "entra",
+            "target": "jumpbox",
+            "label": "Assign API application role to jumpbox MI",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_entra_function_app_0",
+            "source": "entra",
+            "target": "function_app",
+            "label": "Tenant, audience, role and caller validation",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_operator_bastion_0",
+            "source": "operator",
+            "target": "bastion",
+            "label": "Optional interactive access; not yet proven",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_bastion_jumpbox_0",
+            "source": "bastion",
+            "target": "jumpbox",
+            "label": "Administrative RDP",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_jumpbox_foundry_pe_0",
+            "source": "jumpbox",
+            "target": "foundry_pe",
+            "label": "Responses HTTPS",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_foundry_pe_foundry_0",
+            "source": "foundry_pe",
+            "target": "foundry",
+            "label": "Private Link ingress",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_foundry_injected_compute_0",
+            "source": "foundry",
+            "target": "injected_compute",
+            "label": "Compute injection association; PaaS stays outside VNet",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_injected_compute_search_pe_0",
+            "source": "injected_compute",
+            "target": "search_pe",
+            "label": "IQ and toolbox retrieval HTTPS",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_search_pe_search_0",
+            "source": "search_pe",
+            "target": "search",
+            "label": "Private Link",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_injected_compute_state_pe_0",
+            "source": "injected_compute",
+            "target": "state_pe",
+            "label": "Platform state dependencies",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_state_pe_state_0",
+            "source": "state_pe",
+            "target": "state",
+            "label": "Private Link",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_injected_compute_foundry_pe_0",
+            "source": "injected_compute",
+            "target": "foundry_pe",
+            "label": "Model HTTPS",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_foundry_models_0",
+            "source": "foundry",
+            "target": "models",
+            "label": "Model API",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_search_shared_link_0",
+            "source": "search",
+            "target": "shared_link",
+            "label": "IQ planner model request; Search MI",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_shared_link_models_0",
+            "source": "shared_link",
+            "target": "models",
+            "label": "Private Link to model, not hosted agent",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_jumpbox_cus_firewall_0",
+            "source": "jumpbox",
+            "target": "cus_firewall",
+            "label": "Authorized ingestion HTTPS",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_jumpbox_function_pe_0",
+            "source": "jumpbox",
+            "target": "function_pe",
+            "label": "Deployment: private SCM via secured transit",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_cus_firewall_scus_firewall_0",
+            "source": "cus_firewall",
+            "target": "scus_firewall",
+            "label": "CUS to SCUS private transit",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_scus_firewall_function_pe_0",
+            "source": "scus_firewall",
+            "target": "function_pe",
+            "label": "Ingress HTTPS",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_function_pe_function_app_0",
+            "source": "function_pe",
+            "target": "function_app",
+            "label": "Private Link",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_function_app_function_integration_0",
+            "source": "function_app",
+            "target": "function_integration",
+            "label": "Outbound integration association",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_function_integration_cu_pe_0",
+            "source": "function_integration",
+            "target": "cu_pe",
+            "label": "analyzeBinary HTTPS",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_cu_pe_cu_0",
+            "source": "cu_pe",
+            "target": "cu",
+            "label": "Private Link",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_function_integration_storage_pe_0",
+            "source": "function_integration",
+            "target": "storage_pe",
+            "label": "Stage bytes and host storage",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_storage_pe_storage_0",
+            "source": "storage_pe",
+            "target": "storage",
+            "label": "Private Link",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_function_integration_scus_firewall_0",
+            "source": "function_integration",
+            "target": "scus_firewall",
+            "label": "Index write and optional Graph fetch",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_scus_firewall_cus_firewall_0",
+            "source": "scus_firewall",
+            "target": "cus_firewall",
+            "label": "SCUS to CUS indexing transit",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_cus_firewall_search_pe_0",
+            "source": "cus_firewall",
+            "target": "search_pe",
+            "label": "HTTPS indexing via Search PE",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_scus_firewall_public_graph_0",
+            "source": "scus_firewall",
+            "target": "public_graph",
+            "label": "Optional public HTTPS; Sites.Selected",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_dns_cus_vnet_0",
+            "source": "dns",
+            "target": "cus_vnet",
+            "label": "Zone links and private name resolution",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_dns_scus_vnet_0",
+            "source": "dns",
+            "target": "scus_vnet",
+            "label": "Zone links and private name resolution",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          }
+        ],
+        "boundaries": [
+          {
+            "id": "control_plane",
+            "label": "Control plane - deployment, not document flow",
+            "children": [
+              "operator",
+              "arm",
+              "entra"
+            ]
+          },
+          {
+            "id": "bastion_subnet",
+            "label": "AzureBastionSubnet",
+            "children": [
+              "bastion"
+            ]
+          },
+          {
+            "id": "jumpbox_subnet",
+            "label": "Jumpbox subnet",
+            "children": [
+              "jumpbox"
+            ]
+          },
+          {
+            "id": "agent_subnet",
+            "label": "Dedicated agent subnet - Microsoft.App/environments",
+            "children": [
+              "injected_compute"
+            ]
+          },
+          {
+            "id": "cus_pe_subnet",
+            "label": "Private endpoint subnet",
+            "children": [
+              "foundry_pe",
+              "search_pe",
+              "state_pe"
+            ]
+          },
+          {
+            "id": "cus_vnet",
+            "label": "Central US spoke VNet",
+            "children": [
+              "bastion_subnet",
+              "jumpbox_subnet",
+              "agent_subnet",
+              "cus_pe_subnet"
+            ]
+          },
+          {
+            "id": "central",
+            "label": "Central US - runtime resource placement",
+            "children": [
+              "cus_vnet",
+              "foundry",
+              "models",
+              "search",
+              "shared_link",
+              "state"
+            ]
+          },
+          {
+            "id": "secured_vwan",
+            "label": "Virtual WAN Standard - secured regional hubs",
+            "children": [
+              "cus_firewall",
+              "scus_firewall"
+            ]
+          },
+          {
+            "id": "function_subnet",
+            "label": "Function integration subnet - Microsoft.App/environments",
+            "children": [
+              "function_integration"
+            ]
+          },
+          {
+            "id": "scus_pe_subnet",
+            "label": "Private endpoint subnet",
+            "children": [
+              "function_pe",
+              "cu_pe",
+              "storage_pe"
+            ]
+          },
+          {
+            "id": "scus_vnet",
+            "label": "South Central US spoke VNet",
+            "children": [
+              "function_subnet",
+              "scus_pe_subnet"
+            ]
+          },
+          {
+            "id": "south_central",
+            "label": "South Central US - runtime resource placement",
+            "children": [
+              "scus_vnet",
+              "function_app",
+              "cu",
+              "storage"
+            ]
+          }
+        ]
+      },
+      "fidelity": "Exact parsed-source versus rendered-DOM inventory match",
+      "actual": {
+        "nodes": [
+          {
+            "id": "operator",
+            "label": "Approved operator or trusted CI\nTerraform and staged orchestration",
+            "classes": [
+              "control"
+            ]
+          },
+          {
+            "id": "arm",
+            "label": "Azure Resource Manager\nInfrastructure and VM Run Command",
+            "classes": [
+              "control"
+            ]
+          },
+          {
+            "id": "entra",
+            "label": "Microsoft Entra ID\nAPI app and Ingestion.Invoke role",
+            "classes": [
+              "control"
+            ]
+          },
+          {
+            "id": "bastion",
+            "label": "Azure Bastion Standard",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "jumpbox",
+            "label": "Windows jumpbox\nAuthorized managed identity",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "injected_compute",
+            "label": "Platform-managed agent compute\nInjected outbound execution",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "foundry_pe",
+            "label": "Foundry account PE",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "search_pe",
+            "label": "Search PE",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "state_pe",
+            "label": "State-service PEs\nBlob, Cosmos DB, Key Vault",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "foundry",
+            "label": "Microsoft Foundry PaaS\nAccount, project, hosted agent, toolbox",
+            "classes": [
+              "paas"
+            ]
+          },
+          {
+            "id": "models",
+            "label": "Foundry model deployments\nGlobalStandard, processing not region-pinned",
+            "classes": [
+              "paas"
+            ]
+          },
+          {
+            "id": "search",
+            "label": "Azure AI Search PaaS\nText index and IQ planner",
+            "classes": [
+              "paas"
+            ]
+          },
+          {
+            "id": "shared_link",
+            "label": "Search-managed shared private link\nApproved openai_account",
+            "classes": [
+              "paas"
+            ]
+          },
+          {
+            "id": "state",
+            "label": "Azure PaaS dependencies\nStorage, Cosmos DB, Key Vault",
+            "classes": [
+              "paas"
+            ]
+          },
+          {
+            "id": "cus_firewall",
+            "label": "Central US hub\nAzure Firewall Standard",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "scus_firewall",
+            "label": "South Central US hub\nAzure Firewall Standard",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "function_integration",
+            "label": "Function outbound VNet integration",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "function_pe",
+            "label": "Function app and SCM PE",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "cu_pe",
+            "label": "Content Understanding PE",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "storage_pe",
+            "label": "Storage PEs\nStaging and Function host storage",
+            "classes": [
+              "private"
+            ]
+          },
+          {
+            "id": "function_app",
+            "label": "Azure Functions PaaS\nFlex Consumption ingestion API",
+            "classes": [
+              "paas"
+            ]
+          },
+          {
+            "id": "cu",
+            "label": "Microsoft Foundry PaaS\nContent Understanding and model deployments",
+            "classes": [
+              "paas"
+            ]
+          },
+          {
+            "id": "storage",
+            "label": "Azure Storage PaaS\nStaging and Function host storage",
+            "classes": [
+              "paas"
+            ]
+          },
+          {
+            "id": "dns",
+            "label": "Private DNS zones\nLinked to both spokes",
+            "classes": [
+              "control"
+            ]
+          },
+          {
+            "id": "public_graph",
+            "label": "Public Microsoft Graph / SharePoint\nOptional site-scoped source",
+            "classes": [
+              "control"
+            ]
+          },
+          {
+            "id": "legend",
+            "label": "Solid: initiating runtime dependency\nDashed: control plane, identity or association as labeled\nTwo regions separate capabilities, not HA or failover\nBroad firewall allowlist is POC policy, not zero-trust\nTelemetry and installer egress omitted; no AMPLS",
+            "classes": [
+              "control"
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "L_operator_arm_0",
+            "source": "operator",
+            "target": "arm",
+            "label": "Deployment; ARM permissions",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_operator_entra_0",
+            "source": "operator",
+            "target": "entra",
+            "label": "Separate tenant permissions",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_arm_foundry_0",
+            "source": "arm",
+            "target": "foundry",
+            "label": "Account injection, account host, then project host",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_arm_jumpbox_0",
+            "source": "arm",
+            "target": "jumpbox",
+            "label": "Run Command; trusted scripts only",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_entra_jumpbox_0",
+            "source": "entra",
+            "target": "jumpbox",
+            "label": "Assign API application role to jumpbox MI",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_entra_function_app_0",
+            "source": "entra",
+            "target": "function_app",
+            "label": "Tenant, audience, role and caller validation",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_operator_bastion_0",
+            "source": "operator",
+            "target": "bastion",
+            "label": "Optional interactive access; not yet proven",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_bastion_jumpbox_0",
+            "source": "bastion",
+            "target": "jumpbox",
+            "label": "Administrative RDP",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_jumpbox_foundry_pe_0",
+            "source": "jumpbox",
+            "target": "foundry_pe",
+            "label": "Responses HTTPS",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_foundry_pe_foundry_0",
+            "source": "foundry_pe",
+            "target": "foundry",
+            "label": "Private Link ingress",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_foundry_injected_compute_0",
+            "source": "foundry",
+            "target": "injected_compute",
+            "label": "Compute injection association; PaaS stays outside VNet",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_injected_compute_search_pe_0",
+            "source": "injected_compute",
+            "target": "search_pe",
+            "label": "IQ and toolbox retrieval HTTPS",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_search_pe_search_0",
+            "source": "search_pe",
+            "target": "search",
+            "label": "Private Link",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_injected_compute_state_pe_0",
+            "source": "injected_compute",
+            "target": "state_pe",
+            "label": "Platform state dependencies",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_state_pe_state_0",
+            "source": "state_pe",
+            "target": "state",
+            "label": "Private Link",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_injected_compute_foundry_pe_0",
+            "source": "injected_compute",
+            "target": "foundry_pe",
+            "label": "Model HTTPS",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_foundry_models_0",
+            "source": "foundry",
+            "target": "models",
+            "label": "Model API",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_search_shared_link_0",
+            "source": "search",
+            "target": "shared_link",
+            "label": "IQ planner model request; Search MI",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_shared_link_models_0",
+            "source": "shared_link",
+            "target": "models",
+            "label": "Private Link to model, not hosted agent",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_jumpbox_cus_firewall_0",
+            "source": "jumpbox",
+            "target": "cus_firewall",
+            "label": "Authorized ingestion HTTPS",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_jumpbox_function_pe_0",
+            "source": "jumpbox",
+            "target": "function_pe",
+            "label": "Deployment: private SCM via secured transit",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_cus_firewall_scus_firewall_0",
+            "source": "cus_firewall",
+            "target": "scus_firewall",
+            "label": "CUS to SCUS private transit",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_scus_firewall_function_pe_0",
+            "source": "scus_firewall",
+            "target": "function_pe",
+            "label": "Ingress HTTPS",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_function_pe_function_app_0",
+            "source": "function_pe",
+            "target": "function_app",
+            "label": "Private Link",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_function_app_function_integration_0",
+            "source": "function_app",
+            "target": "function_integration",
+            "label": "Outbound integration association",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_function_integration_cu_pe_0",
+            "source": "function_integration",
+            "target": "cu_pe",
+            "label": "analyzeBinary HTTPS",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_cu_pe_cu_0",
+            "source": "cu_pe",
+            "target": "cu",
+            "label": "Private Link",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_function_integration_storage_pe_0",
+            "source": "function_integration",
+            "target": "storage_pe",
+            "label": "Stage bytes and host storage",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_storage_pe_storage_0",
+            "source": "storage_pe",
+            "target": "storage",
+            "label": "Private Link",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_function_integration_scus_firewall_0",
+            "source": "function_integration",
+            "target": "scus_firewall",
+            "label": "Index write and optional Graph fetch",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_scus_firewall_cus_firewall_0",
+            "source": "scus_firewall",
+            "target": "cus_firewall",
+            "label": "SCUS to CUS indexing transit",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_cus_firewall_search_pe_0",
+            "source": "cus_firewall",
+            "target": "search_pe",
+            "label": "HTTPS indexing via Search PE",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_scus_firewall_public_graph_0",
+            "source": "scus_firewall",
+            "target": "public_graph",
+            "label": "Optional public HTTPS; Sites.Selected",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_dns_cus_vnet_0",
+            "source": "dns",
+            "target": "cus_vnet",
+            "label": "Zone links and private name resolution",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_dns_scus_vnet_0",
+            "source": "dns",
+            "target": "scus_vnet",
+            "label": "Zone links and private name resolution",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          }
+        ],
+        "boundaries": [
+          {
+            "id": "control_plane",
+            "label": "Control plane - deployment, not document flow",
+            "children": [
+              "operator",
+              "arm",
+              "entra"
+            ]
+          },
+          {
+            "id": "central",
+            "label": "Central US - runtime resource placement",
+            "children": [
+              "cus_vnet",
+              "foundry",
+              "models",
+              "search",
+              "shared_link",
+              "state"
+            ]
+          },
+          {
+            "id": "secured_vwan",
+            "label": "Virtual WAN Standard - secured regional hubs",
+            "children": [
+              "cus_firewall",
+              "scus_firewall"
+            ]
+          },
+          {
+            "id": "south_central",
+            "label": "South Central US - runtime resource placement",
+            "children": [
+              "scus_vnet",
+              "function_app",
+              "cu",
+              "storage"
+            ]
+          },
+          {
+            "id": "cus_vnet",
+            "label": "Central US spoke VNet",
+            "children": [
+              "bastion_subnet",
+              "jumpbox_subnet",
+              "agent_subnet",
+              "cus_pe_subnet"
+            ]
+          },
+          {
+            "id": "scus_vnet",
+            "label": "South Central US spoke VNet",
+            "children": [
+              "function_subnet",
+              "scus_pe_subnet"
+            ]
+          },
+          {
+            "id": "bastion_subnet",
+            "label": "AzureBastionSubnet",
+            "children": [
+              "bastion"
+            ]
+          },
+          {
+            "id": "jumpbox_subnet",
+            "label": "Jumpbox subnet",
+            "children": [
+              "jumpbox"
+            ]
+          },
+          {
+            "id": "agent_subnet",
+            "label": "Dedicated agent subnet - Microsoft.App/environments",
+            "children": [
+              "injected_compute"
+            ]
+          },
+          {
+            "id": "cus_pe_subnet",
+            "label": "Private endpoint subnet",
+            "children": [
+              "foundry_pe",
+              "search_pe",
+              "state_pe"
+            ]
+          },
+          {
+            "id": "function_subnet",
+            "label": "Function integration subnet - Microsoft.App/environments",
+            "children": [
+              "function_integration"
+            ]
+          },
+          {
+            "id": "scus_pe_subnet",
+            "label": "Private endpoint subnet",
+            "children": [
+              "function_pe",
+              "cu_pe",
+              "storage_pe"
+            ]
+          }
+        ]
+      },
+      "routes": [
+        {
+          "id": "L_operator_arm_0",
+          "first": [
+            [
+              700,
+              360
+            ],
+            [
+              885,
+              360
+            ]
+          ],
+          "second": [
+            [
+              1235,
+              360
+            ],
+            [
+              1400,
+              360
+            ]
+          ],
+          "labelBox": {
+            "x": 885,
+            "y": 338.5,
+            "width": 350,
+            "height": 43,
+            "score": 0
+          }
+        },
+        {
+          "id": "L_operator_entra_0",
+          "first": [
+            [
+              700,
+              420
+            ],
+            [
+              1380,
+              420
+            ],
+            [
+              1380,
+              460
+            ],
+            [
+              1998,
+              460
+            ]
+          ],
+          "second": [
+            [
+              2322,
+              460
+            ],
+            [
+              2800,
+              460
+            ],
+            [
+              2800,
+              420
+            ],
+            [
+              2830,
+              420
+            ]
+          ],
+          "labelBox": {
+            "x": 1998,
+            "y": 438.5,
+            "width": 324,
+            "height": 43,
+            "score": 19
+          }
+        },
+        {
+          "id": "L_arm_foundry_0",
+          "first": [
+            [
+              1820,
+              430
+            ],
+            [
+              1820,
+              500
+            ],
+            [
+              1720,
+              500
+            ]
+          ],
+          "second": [
+            [
+              1360,
+              540
+            ],
+            [
+              1320,
+              540
+            ],
+            [
+              1320,
+              260
+            ],
+            [
+              1980,
+              260
+            ],
+            [
+              1980,
+              520
+            ],
+            [
+              1740,
+              520
+            ],
+            [
+              1740,
+              780
+            ],
+            [
+              1680,
+              780
+            ],
+            [
+              1680,
+              1000
+            ],
+            [
+              1320,
+              1000
+            ],
+            [
+              1320,
+              1030
+            ]
+          ],
+          "labelBox": {
+            "x": 1360,
+            "y": 483.5,
+            "width": 360,
+            "height": 73,
+            "score": 20
+          }
+        },
+        {
+          "id": "L_arm_jumpbox_0",
+          "first": [
+            [
+              1400,
+              420
+            ],
+            [
+              1360,
+              420
+            ],
+            [
+              1360,
+              460
+            ],
+            [
+              1280,
+              460
+            ],
+            [
+              1280,
+              500
+            ],
+            [
+              1240,
+              500
+            ]
+          ],
+          "second": [
+            [
+              980,
+              480
+            ],
+            [
+              980,
+              460
+            ],
+            [
+              20,
+              460
+            ],
+            [
+              20,
+              980
+            ],
+            [
+              980,
+              980
+            ],
+            [
+              980,
+              860
+            ],
+            [
+              950,
+              860
+            ]
+          ],
+          "labelBox": {
+            "x": 880,
+            "y": 480,
+            "width": 360,
+            "height": 73,
+            "score": 163.5
+          }
+        },
+        {
+          "id": "L_entra_jumpbox_0",
+          "first": [
+            [
+              2830,
+              420
+            ],
+            [
+              2340,
+              420
+            ],
+            [
+              2340,
+              560
+            ],
+            [
+              2160,
+              560
+            ]
+          ],
+          "second": [
+            [
+              1800,
+              600
+            ],
+            [
+              1760,
+              600
+            ],
+            [
+              1760,
+              680
+            ],
+            [
+              1040,
+              680
+            ],
+            [
+              1040,
+              860
+            ],
+            [
+              950,
+              860
+            ]
+          ],
+          "labelBox": {
+            "x": 1800,
+            "y": 543.5,
+            "width": 360,
+            "height": 73,
+            "score": 8
+          }
+        },
+        {
+          "id": "L_entra_function_app_0",
+          "first": [
+            [
+              3510,
+              420
+            ],
+            [
+              3540,
+              420
+            ],
+            [
+              3540,
+              483.5
+            ]
+          ],
+          "second": [
+            [
+              3620,
+              540
+            ],
+            [
+              3660,
+              540
+            ],
+            [
+              3660,
+              560
+            ],
+            [
+              3800,
+              560
+            ],
+            [
+              3800,
+              1140
+            ],
+            [
+              3640,
+              1140
+            ],
+            [
+              3640,
+              1180
+            ]
+          ],
+          "labelBox": {
+            "x": 3260,
+            "y": 483.5,
+            "width": 360,
+            "height": 73,
+            "score": 32.5
+          }
+        },
+        {
+          "id": "L_operator_bastion_0",
+          "first": [
+            [
+              140,
+              420
+            ],
+            [
+              80,
+              420
+            ],
+            [
+              80,
+              480
+            ]
+          ],
+          "second": [
+            [
+              40,
+              540
+            ],
+            [
+              20,
+              540
+            ],
+            [
+              20,
+              580
+            ],
+            [
+              40,
+              580
+            ],
+            [
+              40,
+              860
+            ],
+            [
+              140,
+              860
+            ]
+          ],
+          "labelBox": {
+            "x": 40,
+            "y": 480,
+            "width": 360,
+            "height": 73,
+            "score": 123.5
+          }
+        },
+        {
+          "id": "L_bastion_jumpbox_0",
+          "first": [
+            [
+              460,
+              920
+            ],
+            [
+              500,
+              920
+            ],
+            [
+              500,
+              1000
+            ]
+          ],
+          "second": [
+            [
+              500,
+              1000
+            ],
+            [
+              500,
+              960
+            ],
+            [
+              520,
+              960
+            ],
+            [
+              520,
+              940
+            ],
+            [
+              550,
+              940
+            ]
+          ],
+          "labelBox": {
+            "x": 440,
+            "y": 1000,
+            "width": 228,
+            "height": 43,
+            "score": 125.5
+          }
+        },
+        {
+          "id": "L_jumpbox_foundry_pe_0",
+          "first": [
+            [
+              950,
+              940
+            ],
+            [
+              1000,
+              940
+            ],
+            [
+              1000,
+              1020
+            ],
+            [
+              931,
+              1020
+            ]
+          ],
+          "second": [
+            [
+              931,
+              1020
+            ],
+            [
+              960,
+              1020
+            ],
+            [
+              960,
+              1060
+            ],
+            [
+              1020,
+              1060
+            ],
+            [
+              1020,
+              1200
+            ],
+            [
+              960,
+              1200
+            ]
+          ],
+          "labelBox": {
+            "x": 720,
+            "y": 1000,
+            "width": 211,
+            "height": 43,
+            "score": 227
+          }
+        },
+        {
+          "id": "L_foundry_pe_foundry_0",
+          "first": [
+            [
+              960,
+              1200
+            ],
+            [
+              1000,
+              1200
+            ],
+            [
+              1000,
+              1240
+            ],
+            [
+              1660,
+              1240
+            ],
+            [
+              1660,
+              1120
+            ],
+            [
+              1700,
+              1120
+            ],
+            [
+              1700,
+              1160
+            ]
+          ],
+          "second": [
+            [
+              1700,
+              1160
+            ],
+            [
+              1700,
+              1120
+            ],
+            [
+              1640,
+              1120
+            ]
+          ],
+          "labelBox": {
+            "x": 1680,
+            "y": 1160,
+            "width": 227,
+            "height": 43,
+            "score": 592
+          }
+        },
+        {
+          "id": "L_foundry_injected_compute_0",
+          "first": [
+            [
+              1220,
+              1200
+            ],
+            [
+              1180,
+              1200
+            ],
+            [
+              1180,
+              1380
+            ],
+            [
+              600,
+              1380
+            ],
+            [
+              600,
+              1540
+            ],
+            [
+              560,
+              1540
+            ]
+          ],
+          "second": [
+            [
+              240,
+              1520
+            ],
+            [
+              240,
+              1460
+            ]
+          ],
+          "labelBox": {
+            "x": 200,
+            "y": 1520,
+            "width": 360,
+            "height": 73,
+            "score": 376.5
+          }
+        },
+        {
+          "id": "L_injected_compute_search_pe_0",
+          "first": [
+            [
+              180,
+              1460
+            ],
+            [
+              180,
+              1660
+            ],
+            [
+              200,
+              1660
+            ]
+          ],
+          "second": [
+            [
+              551,
+              1660
+            ],
+            [
+              580,
+              1660
+            ],
+            [
+              580,
+              1500
+            ],
+            [
+              620,
+              1500
+            ]
+          ],
+          "labelBox": {
+            "x": 200,
+            "y": 1640,
+            "width": 351,
+            "height": 43,
+            "score": 366
+          }
+        },
+        {
+          "id": "L_search_pe_search_0",
+          "first": [
+            [
+              960,
+              1420
+            ],
+            [
+              1025,
+              1420
+            ]
+          ],
+          "second": [
+            [
+              1160,
+              1398.5
+            ],
+            [
+              1160,
+              1360
+            ],
+            [
+              1180,
+              1360
+            ],
+            [
+              1180,
+              1380
+            ],
+            [
+              1220,
+              1380
+            ]
+          ],
+          "labelBox": {
+            "x": 1025,
+            "y": 1398.5,
+            "width": 150,
+            "height": 43,
+            "score": 0
+          }
+        },
+        {
+          "id": "L_injected_compute_state_pe_0",
+          "first": [
+            [
+              420,
+              1460
+            ],
+            [
+              420,
+              1500
+            ],
+            [
+              160,
+              1500
+            ],
+            [
+              160,
+              1760
+            ],
+            [
+              440,
+              1760
+            ],
+            [
+              440,
+              1800
+            ]
+          ],
+          "second": [
+            [
+              560,
+              1800
+            ],
+            [
+              560,
+              1760
+            ],
+            [
+              580,
+              1760
+            ],
+            [
+              580,
+              1740
+            ],
+            [
+              620,
+              1740
+            ]
+          ],
+          "labelBox": {
+            "x": 400,
+            "y": 1800,
+            "width": 326,
+            "height": 43,
+            "score": 164.5
+          }
+        },
+        {
+          "id": "L_state_pe_state_0",
+          "first": [
+            [
+              960,
+              1660
+            ],
+            [
+              1020,
+              1660
+            ],
+            [
+              1020,
+              1698.5
+            ]
+          ],
+          "second": [
+            [
+              1140,
+              1741.5
+            ],
+            [
+              1140,
+              1780
+            ],
+            [
+              1190,
+              1780
+            ]
+          ],
+          "labelBox": {
+            "x": 1005,
+            "y": 1698.5,
+            "width": 150,
+            "height": 43,
+            "score": 0.5
+          }
+        },
+        {
+          "id": "L_injected_compute_foundry_pe_0",
+          "first": [
+            [
+              180,
+              1280
+            ],
+            [
+              180,
+              1200
+            ],
+            [
+              80,
+              1200
+            ],
+            [
+              80,
+              1020
+            ],
+            [
+              240,
+              1020
+            ]
+          ],
+          "second": [
+            [
+              380,
+              1000
+            ],
+            [
+              380,
+              960
+            ],
+            [
+              220,
+              960
+            ],
+            [
+              220,
+              1060
+            ],
+            [
+              560,
+              1060
+            ],
+            [
+              560,
+              1200
+            ],
+            [
+              620,
+              1200
+            ]
+          ],
+          "labelBox": {
+            "x": 240,
+            "y": 1000,
+            "width": 168,
+            "height": 43,
+            "score": 454.5
+          }
+        },
+        {
+          "id": "L_foundry_models_0",
+          "first": [
+            [
+              1540,
+              1030
+            ],
+            [
+              1540,
+              960
+            ],
+            [
+              1515,
+              960
+            ]
+          ],
+          "second": [
+            [
+              1515,
+              960
+            ],
+            [
+              1540,
+              960
+            ],
+            [
+              1540,
+              900
+            ]
+          ],
+          "labelBox": {
+            "x": 1365,
+            "y": 938.5,
+            "width": 150,
+            "height": 43,
+            "score": 0
+          }
+        },
+        {
+          "id": "L_search_shared_link_0",
+          "first": [
+            [
+              1220,
+              1380
+            ],
+            [
+              1200,
+              1380
+            ],
+            [
+              1200,
+              1680
+            ],
+            [
+              980,
+              1680
+            ],
+            [
+              980,
+              1780
+            ],
+            [
+              1140,
+              1780
+            ],
+            [
+              1140,
+              1820
+            ],
+            [
+              1120,
+              1820
+            ]
+          ],
+          "second": [
+            [
+              1120,
+              1820
+            ],
+            [
+              1160,
+              1820
+            ],
+            [
+              1160,
+              1800
+            ],
+            [
+              1140,
+              1800
+            ],
+            [
+              1140,
+              1780
+            ],
+            [
+              980,
+              1780
+            ],
+            [
+              980,
+              1680
+            ],
+            [
+              1180,
+              1680
+            ],
+            [
+              1180,
+              1660
+            ],
+            [
+              1220,
+              1660
+            ]
+          ],
+          "labelBox": {
+            "x": 760,
+            "y": 1800,
+            "width": 360,
+            "height": 73,
+            "score": 576.5
+          }
+        },
+        {
+          "id": "L_shared_link_models_0",
+          "first": [
+            [
+              1640,
+              1500
+            ],
+            [
+              1680,
+              1500
+            ],
+            [
+              1680,
+              1340
+            ],
+            [
+              1720,
+              1340
+            ],
+            [
+              1720,
+              1313
+            ]
+          ],
+          "second": [
+            [
+              1680,
+              1260
+            ],
+            [
+              1660,
+              1260
+            ],
+            [
+              1660,
+              940
+            ],
+            [
+              1620,
+              940
+            ],
+            [
+              1620,
+              900
+            ]
+          ],
+          "labelBox": {
+            "x": 1680,
+            "y": 1240,
+            "width": 360,
+            "height": 73,
+            "score": 683.5
+          }
+        },
+        {
+          "id": "L_jumpbox_cus_firewall_0",
+          "first": [
+            [
+              950,
+              860
+            ],
+            [
+              1000,
+              860
+            ],
+            [
+              1000,
+              920
+            ],
+            [
+              1700,
+              920
+            ],
+            [
+              1700,
+              820
+            ],
+            [
+              1720,
+              820
+            ]
+          ],
+          "second": [
+            [
+              2000,
+              843
+            ],
+            [
+              2000,
+              900
+            ]
+          ],
+          "labelBox": {
+            "x": 1720,
+            "y": 800,
+            "width": 321,
+            "height": 43,
+            "score": 159
+          }
+        },
+        {
+          "id": "L_jumpbox_function_pe_0",
+          "first": [
+            [
+              950,
+              940
+            ],
+            [
+              1200,
+              940
+            ],
+            [
+              1200,
+              1280
+            ],
+            [
+              1660,
+              1280
+            ],
+            [
+              1660,
+              1360
+            ],
+            [
+              1800,
+              1360
+            ],
+            [
+              1800,
+              1340
+            ],
+            [
+              2060,
+              1340
+            ],
+            [
+              2060,
+              1200
+            ],
+            [
+              2080,
+              1200
+            ]
+          ],
+          "second": [
+            [
+              2440,
+              1220
+            ],
+            [
+              2600,
+              1220
+            ]
+          ],
+          "labelBox": {
+            "x": 2080,
+            "y": 1183.5,
+            "width": 360,
+            "height": 73,
+            "score": 31
+          }
+        },
+        {
+          "id": "L_cus_firewall_scus_firewall_0",
+          "first": [
+            [
+              2000,
+              1060
+            ],
+            [
+              2000,
+              1220
+            ],
+            [
+              2060,
+              1220
+            ],
+            [
+              2060,
+              1280
+            ],
+            [
+              2180,
+              1280
+            ],
+            [
+              2180,
+              1640
+            ],
+            [
+              2000,
+              1640
+            ],
+            [
+              2000,
+              1680
+            ]
+          ],
+          "second": [
+            [
+              2000,
+              1680
+            ],
+            [
+              2000,
+              1610
+            ]
+          ],
+          "labelBox": {
+            "x": 1840,
+            "y": 1680,
+            "width": 313,
+            "height": 43,
+            "score": 335
+          }
+        },
+        {
+          "id": "L_scus_firewall_function_pe_0",
+          "first": [
+            [
+              2160,
+              1400
+            ],
+            [
+              2352.5,
+              1400
+            ]
+          ],
+          "second": [
+            [
+              2527.5,
+              1400
+            ],
+            [
+              2560,
+              1400
+            ],
+            [
+              2560,
+              1300
+            ],
+            [
+              2600,
+              1300
+            ]
+          ],
+          "labelBox": {
+            "x": 2352.5,
+            "y": 1378.5,
+            "width": 175,
+            "height": 43,
+            "score": 0
+          }
+        },
+        {
+          "id": "L_function_pe_function_app_0",
+          "first": [
+            [
+              3010,
+              1260
+            ],
+            [
+              3105,
+              1260
+            ]
+          ],
+          "second": [
+            [
+              3255,
+              1260
+            ],
+            [
+              3340,
+              1260
+            ]
+          ],
+          "labelBox": {
+            "x": 3105,
+            "y": 1238.5,
+            "width": 150,
+            "height": 43,
+            "score": 0
+          }
+        },
+        {
+          "id": "L_function_app_function_integration_0",
+          "first": [
+            [
+              3380,
+              1180
+            ],
+            [
+              3380,
+              1040
+            ],
+            [
+              3360,
+              1040
+            ],
+            [
+              3360,
+              996.5
+            ]
+          ],
+          "second": [
+            [
+              3080,
+              960
+            ],
+            [
+              2970,
+              960
+            ]
+          ],
+          "labelBox": {
+            "x": 3080,
+            "y": 923.5,
+            "width": 360,
+            "height": 73,
+            "score": 0
+          }
+        },
+        {
+          "id": "L_function_integration_cu_pe_0",
+          "first": [
+            [
+              2450,
+              960
+            ],
+            [
+              2420,
+              960
+            ],
+            [
+              2420,
+              1060
+            ],
+            [
+              2300,
+              1060
+            ],
+            [
+              2300,
+              1160
+            ],
+            [
+              2540,
+              1160
+            ],
+            [
+              2540,
+              1440
+            ],
+            [
+              2420,
+              1440
+            ],
+            [
+              2420,
+              1480
+            ]
+          ],
+          "second": [
+            [
+              2444,
+              1500
+            ],
+            [
+              2560,
+              1500
+            ],
+            [
+              2560,
+              1480
+            ],
+            [
+              2600,
+              1480
+            ]
+          ],
+          "labelBox": {
+            "x": 2200,
+            "y": 1480,
+            "width": 244,
+            "height": 43,
+            "score": 123.5
+          }
+        },
+        {
+          "id": "L_cu_pe_cu_0",
+          "first": [
+            [
+              3010,
+              1440
+            ],
+            [
+              3105,
+              1440
+            ]
+          ],
+          "second": [
+            [
+              3255,
+              1440
+            ],
+            [
+              3340,
+              1440
+            ]
+          ],
+          "labelBox": {
+            "x": 3105,
+            "y": 1418.5,
+            "width": 150,
+            "height": 43,
+            "score": 0
+          }
+        },
+        {
+          "id": "L_function_integration_storage_pe_0",
+          "first": [
+            [
+              2500,
+              970
+            ],
+            [
+              2500,
+              1060
+            ],
+            [
+              3120,
+              1060
+            ],
+            [
+              3120,
+              1220
+            ],
+            [
+              3040,
+              1220
+            ],
+            [
+              3040,
+              1400
+            ],
+            [
+              2580,
+              1400
+            ],
+            [
+              2580,
+              1540
+            ],
+            [
+              2500,
+              1540
+            ],
+            [
+              2500,
+              1578.5
+            ]
+          ],
+          "second": [
+            [
+              2526,
+              1600
+            ],
+            [
+              2560,
+              1600
+            ],
+            [
+              2560,
+              1660
+            ],
+            [
+              2600,
+              1660
+            ]
+          ],
+          "labelBox": {
+            "x": 2194,
+            "y": 1578.5,
+            "width": 332,
+            "height": 43,
+            "score": 18
+          }
+        },
+        {
+          "id": "L_storage_pe_storage_0",
+          "first": [
+            [
+              3010,
+              1700
+            ],
+            [
+              3105,
+              1700
+            ]
+          ],
+          "second": [
+            [
+              3255,
+              1700
+            ],
+            [
+              3340,
+              1700
+            ]
+          ],
+          "labelBox": {
+            "x": 3105,
+            "y": 1678.5,
+            "width": 150,
+            "height": 43,
+            "score": 0
+          }
+        },
+        {
+          "id": "L_function_integration_scus_firewall_0",
+          "first": [
+            [
+              2450,
+              960
+            ],
+            [
+              2280,
+              960
+            ],
+            [
+              2280,
+              1160
+            ],
+            [
+              2460,
+              1160
+            ],
+            [
+              2460,
+              1360
+            ],
+            [
+              2560,
+              1360
+            ],
+            [
+              2560,
+              1460
+            ],
+            [
+              2540,
+              1460
+            ],
+            [
+              2540,
+              1580
+            ],
+            [
+              2580,
+              1580
+            ],
+            [
+              2580,
+              1780
+            ],
+            [
+              2320,
+              1780
+            ]
+          ],
+          "second": [
+            [
+              1960,
+              1780
+            ],
+            [
+              1920,
+              1780
+            ],
+            [
+              1920,
+              1740
+            ],
+            [
+              1820,
+              1740
+            ],
+            [
+              1820,
+              1640
+            ],
+            [
+              1900,
+              1640
+            ],
+            [
+              1900,
+              1610
+            ]
+          ],
+          "labelBox": {
+            "x": 1960,
+            "y": 1760,
+            "width": 360,
+            "height": 73,
+            "score": 416.5
+          }
+        },
+        {
+          "id": "L_scus_firewall_cus_firewall_0",
+          "first": [
+            [
+              2160,
+              1560
+            ],
+            [
+              2180,
+              1560
+            ],
+            [
+              2180,
+              1640
+            ],
+            [
+              2240,
+              1640
+            ],
+            [
+              2240,
+              1680
+            ]
+          ],
+          "second": [
+            [
+              2240,
+              1680
+            ],
+            [
+              2240,
+              1640
+            ],
+            [
+              2180,
+              1640
+            ],
+            [
+              2180,
+              1460
+            ],
+            [
+              2200,
+              1460
+            ],
+            [
+              2200,
+              1300
+            ],
+            [
+              2060,
+              1300
+            ],
+            [
+              2060,
+              1080
+            ],
+            [
+              2200,
+              1080
+            ],
+            [
+              2200,
+              1040
+            ],
+            [
+              2160,
+              1040
+            ]
+          ],
+          "labelBox": {
+            "x": 2200,
+            "y": 1680,
+            "width": 331,
+            "height": 43,
+            "score": 697
+          }
+        },
+        {
+          "id": "L_cus_firewall_search_pe_0",
+          "first": [
+            [
+              1820,
+              1040
+            ],
+            [
+              1780,
+              1040
+            ],
+            [
+              1780,
+              1140
+            ],
+            [
+              1920,
+              1140
+            ],
+            [
+              1920,
+              1220
+            ],
+            [
+              1660,
+              1220
+            ],
+            [
+              1660,
+              1680
+            ],
+            [
+              1700,
+              1680
+            ],
+            [
+              1700,
+              1860
+            ],
+            [
+              1496,
+              1860
+            ]
+          ],
+          "second": [
+            [
+              1496,
+              1860
+            ],
+            [
+              1520,
+              1860
+            ],
+            [
+              1520,
+              1900
+            ],
+            [
+              740,
+              1900
+            ],
+            [
+              740,
+              1780
+            ],
+            [
+              600,
+              1780
+            ],
+            [
+              600,
+              1560
+            ],
+            [
+              1000,
+              1560
+            ],
+            [
+              1000,
+              1500
+            ],
+            [
+              960,
+              1500
+            ]
+          ],
+          "labelBox": {
+            "x": 1160,
+            "y": 1840,
+            "width": 336,
+            "height": 43,
+            "score": 589.5
+          }
+        },
+        {
+          "id": "L_scus_firewall_public_graph_0",
+          "first": [
+            [
+              2160,
+              1560
+            ],
+            [
+              2540,
+              1560
+            ],
+            [
+              2540,
+              1660
+            ],
+            [
+              2560,
+              1660
+            ],
+            [
+              2560,
+              1760
+            ],
+            [
+              2360,
+              1760
+            ],
+            [
+              2360,
+              1820
+            ],
+            [
+              2400,
+              1820
+            ]
+          ],
+          "second": [
+            [
+              2760,
+              1860
+            ],
+            [
+              3080,
+              1860
+            ],
+            [
+              3080,
+              1930
+            ]
+          ],
+          "labelBox": {
+            "x": 2400,
+            "y": 1803.5,
+            "width": 360,
+            "height": 73,
+            "score": 3
+          }
+        },
+        {
+          "id": "L_dns_cus_vnet_0",
+          "first": [
+            [
+              620,
+              1940
+            ],
+            [
+              660,
+              1940
+            ],
+            [
+              660,
+              1860
+            ],
+            [
+              60,
+              1860
+            ],
+            [
+              60,
+              680
+            ],
+            [
+              20,
+              680
+            ],
+            [
+              20,
+              260
+            ],
+            [
+              720,
+              260
+            ],
+            [
+              720,
+              480
+            ]
+          ],
+          "second": [
+            [
+              800,
+              540
+            ],
+            [
+              840,
+              540
+            ],
+            [
+              840,
+              260
+            ],
+            [
+              20,
+              260
+            ],
+            [
+              20,
+              680
+            ],
+            [
+              60,
+              680
+            ],
+            [
+              60,
+              1220
+            ],
+            [
+              600,
+              1220
+            ],
+            [
+              600,
+              1160
+            ],
+            [
+              1060,
+              1160
+            ],
+            [
+              1060,
+              800
+            ],
+            [
+              1010,
+              800
+            ]
+          ],
+          "labelBox": {
+            "x": 440,
+            "y": 480,
+            "width": 360,
+            "height": 73,
+            "score": 1333.5
+          }
+        },
+        {
+          "id": "L_dns_scus_vnet_0",
+          "first": [
+            [
+              620,
+              1980
+            ],
+            [
+              720,
+              1980
+            ],
+            [
+              720,
+              1860
+            ],
+            [
+              740,
+              1860
+            ],
+            [
+              740,
+              1780
+            ],
+            [
+              1000,
+              1780
+            ],
+            [
+              1000,
+              1760
+            ],
+            [
+              1160,
+              1760
+            ],
+            [
+              1160,
+              1820
+            ],
+            [
+              1940,
+              1820
+            ],
+            [
+              1940,
+              1900
+            ],
+            [
+              2560,
+              1900
+            ],
+            [
+              2560,
+              1980
+            ],
+            [
+              2600,
+              1980
+            ]
+          ],
+          "second": [
+            [
+              2920,
+              1920
+            ],
+            [
+              2920,
+              1790
+            ]
+          ],
+          "labelBox": {
+            "x": 2600,
+            "y": 1920,
+            "width": 360,
+            "height": 73,
+            "score": 536.5
+          }
+        }
+      ],
+      "officialIconInstances": 21,
+      "geometryChecks": {
+        "nodeOverlaps": 0,
+        "textOverflows": 0,
+        "boundaryMembershipMismatches": 0,
+        "labelOverlaps": 0
+      }
+    },
+    {
+      "slug": "runtime-flow",
+      "sha256": "055eca0aca8b27552905b41f29231b8af64cd61226094779cf9238629774aa6e",
+      "title": "Document to grounded answer",
+      "source": "docs/diagrams/runtime-flow-azure-architecture.mmd",
+      "file": "docs/diagrams/runtime-flow-azure-architecture.png",
+      "width": 3840,
+      "height": 2160,
+      "outputSha256": "5172803cc1de480bd6c4181656d11dd9d7451374e933cc1b717cb575f3f286d4",
+      "inventory": {
+        "nodes": [
+          {
+            "id": "operator",
+            "label": "Authorized demo caller\nCentral US jumpbox MI",
+            "classes": []
+          },
+          {
+            "id": "ingestion",
+            "label": "Ingestion Function\nEntra and input validation",
+            "classes": [
+              "compute"
+            ]
+          },
+          {
+            "id": "fixture",
+            "label": "Deterministic synthetic fixture\nGenerated inside Function",
+            "classes": []
+          },
+          {
+            "id": "staging",
+            "label": "Blob Storage\nStaged source bytes",
+            "classes": [
+              "data"
+            ]
+          },
+          {
+            "id": "analysis",
+            "label": "Content Understanding\nanalyzeBinary and poll",
+            "classes": [
+              "data"
+            ]
+          },
+          {
+            "id": "index_write",
+            "label": "Function extraction\nProvenance and per-document status",
+            "classes": [
+              "compute"
+            ]
+          },
+          {
+            "id": "sharepoint",
+            "label": "Optional SharePoint Online\nSource of record via Graph",
+            "classes": [
+              "caution"
+            ]
+          },
+          {
+            "id": "transit",
+            "label": "SCUS Function integration subnet\nSCUS firewall - vWAN - CUS firewall",
+            "classes": []
+          },
+          {
+            "id": "index",
+            "label": "Text and semantic index\nDerived content, no vectors",
+            "classes": [
+              "data"
+            ]
+          },
+          {
+            "id": "iq",
+            "label": "Foundry IQ knowledge base\nRetrieval planner",
+            "classes": [
+              "data"
+            ]
+          },
+          {
+            "id": "agent",
+            "label": "Native Python hosted agent\nResponses request",
+            "classes": [
+              "compute"
+            ]
+          },
+          {
+            "id": "iq_call",
+            "label": "Required IQ invocation\nFull current question",
+            "classes": [
+              "compute"
+            ]
+          },
+          {
+            "id": "toolbox",
+            "label": "Required versioned toolbox\nRead-only Search, query_type simple",
+            "classes": [
+              "compute"
+            ]
+          },
+          {
+            "id": "gate",
+            "label": "Result gate\nBoth current calls must succeed",
+            "classes": [
+              "compute"
+            ]
+          },
+          {
+            "id": "synthesis",
+            "label": "Tool-free synthesis\nUntrusted evidence and source IDs",
+            "classes": [
+              "compute"
+            ]
+          },
+          {
+            "id": "planner_model",
+            "label": "Foundry planner model deployment\nGlobalStandard processing",
+            "classes": [
+              "data"
+            ]
+          },
+          {
+            "id": "answer_model",
+            "label": "Foundry answer model deployment\nGlobalStandard processing",
+            "classes": [
+              "data"
+            ]
+          },
+          {
+            "id": "failure",
+            "label": "Explicit failure\nNo grounded answer",
+            "classes": [
+              "caution"
+            ]
+          },
+          {
+            "id": "answer",
+            "label": "Grounded answer and source metadata\nOr uncertainty when evidence is insufficient",
+            "classes": []
+          },
+          {
+            "id": "legend",
+            "label": "Solid: runtime invocation or data/control flow\nDashed: optional or secondary runtime relationship\nPE = private endpoint; SPL = shared private link\nPhysical placement is in the topology contract\nGlobalStandard processing is not region-pinned; no control-plane deployment flow",
+            "classes": [
+              "caution"
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "L_operator_ingestion_0",
+            "source": "operator",
+            "target": "ingestion",
+            "label": "1. HTTPS POST via Function PE; Ingestion.Invoke",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_ingestion_fixture_0",
+            "source": "ingestion",
+            "target": "fixture",
+            "label": "2. Default: load constrained fixture",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_ingestion_sharepoint_0",
+            "source": "ingestion",
+            "target": "sharepoint",
+            "label": "2. Optional: Graph HTTPS via SCUS firewall; Sites.Selected",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_ingestion_staging_0",
+            "source": "ingestion",
+            "target": "staging",
+            "label": "3. Stage selected bytes via Blob PE",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_ingestion_analysis_0",
+            "source": "ingestion",
+            "target": "analysis",
+            "label": "4. Send bytes via Content Understanding PE",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_ingestion_index_write_0",
+            "source": "ingestion",
+            "target": "index_write",
+            "label": "5. Extract completed analysis; validate content",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_index_write_transit_0",
+            "source": "index_write",
+            "target": "transit",
+            "label": "5. Authenticated Search indexing",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_transit_index_0",
+            "source": "transit",
+            "target": "index",
+            "label": "5. HTTPS via CUS Search PE",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_operator_agent_0",
+            "source": "operator",
+            "target": "agent",
+            "label": "6. After successful ingestion: Responses via Foundry PE",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_agent_iq_call_0",
+            "source": "agent",
+            "target": "iq_call",
+            "label": "7. Invoke IQ first",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_iq_call_iq_0",
+            "source": "iq_call",
+            "target": "iq",
+            "label": "7. Search PE; knowledgeBases retrieve",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_iq_index_0",
+            "source": "iq",
+            "target": "index",
+            "label": "Retrieve indexed source content",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_iq_planner_model_0",
+            "source": "iq",
+            "target": "planner_model",
+            "label": "Model HTTPS via approved SPL",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_iq_call_toolbox_0",
+            "source": "iq_call",
+            "target": "toolbox",
+            "label": "8. After IQ result recorded, invoke toolbox",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_toolbox_index_0",
+            "source": "toolbox",
+            "target": "index",
+            "label": "8. Simple query via Search PE",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_iq_call_gate_0",
+            "source": "iq_call",
+            "target": "gate",
+            "label": "Current IQ result and references",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_toolbox_gate_0",
+            "source": "toolbox",
+            "target": "gate",
+            "label": "9. Current toolbox result",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_gate_failure_0",
+            "source": "gate",
+            "target": "failure",
+            "label": "Any failed, empty, or mismatched result",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_gate_synthesis_0",
+            "source": "gate",
+            "target": "synthesis",
+            "label": "Both validated",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_synthesis_answer_model_0",
+            "source": "synthesis",
+            "target": "answer_model",
+            "label": "10. Responses model request; no tools",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_synthesis_answer_0",
+            "source": "synthesis",
+            "target": "answer",
+            "label": "10. Validate text; append retrieved metadata",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_synthesis_failure_0",
+            "source": "synthesis",
+            "target": "failure",
+            "label": "Synthesis failure",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          }
+        ],
+        "boundaries": [
+          {
+            "id": "scus_runtime",
+            "label": "South Central US - ingestion services, not a VNet boundary",
+            "children": [
+              "ingestion",
+              "fixture",
+              "staging",
+              "analysis",
+              "index_write"
+            ]
+          },
+          {
+            "id": "cus_search",
+            "label": "Central US - Search PaaS",
+            "children": [
+              "index",
+              "iq"
+            ]
+          },
+          {
+            "id": "cus_foundry",
+            "label": "Central US - Foundry PaaS and hosted application",
+            "children": [
+              "agent",
+              "iq_call",
+              "toolbox",
+              "gate",
+              "synthesis"
+            ]
+          }
+        ]
+      },
+      "fidelity": "Exact parsed-source versus rendered-DOM inventory match",
+      "actual": {
+        "nodes": [
+          {
+            "id": "operator",
+            "label": "Authorized demo caller\nCentral US jumpbox MI",
+            "classes": []
+          },
+          {
+            "id": "ingestion",
+            "label": "Ingestion Function\nEntra and input validation",
+            "classes": [
+              "compute"
+            ]
+          },
+          {
+            "id": "fixture",
+            "label": "Deterministic synthetic fixture\nGenerated inside Function",
+            "classes": []
+          },
+          {
+            "id": "staging",
+            "label": "Blob Storage\nStaged source bytes",
+            "classes": [
+              "data"
+            ]
+          },
+          {
+            "id": "analysis",
+            "label": "Content Understanding\nanalyzeBinary and poll",
+            "classes": [
+              "data"
+            ]
+          },
+          {
+            "id": "index_write",
+            "label": "Function extraction\nProvenance and per-document status",
+            "classes": [
+              "compute"
+            ]
+          },
+          {
+            "id": "sharepoint",
+            "label": "Optional SharePoint Online\nSource of record via Graph",
+            "classes": [
+              "caution"
+            ]
+          },
+          {
+            "id": "transit",
+            "label": "SCUS Function integration subnet\nSCUS firewall - vWAN - CUS firewall",
+            "classes": []
+          },
+          {
+            "id": "index",
+            "label": "Text and semantic index\nDerived content, no vectors",
+            "classes": [
+              "data"
+            ]
+          },
+          {
+            "id": "iq",
+            "label": "Foundry IQ knowledge base\nRetrieval planner",
+            "classes": [
+              "data"
+            ]
+          },
+          {
+            "id": "agent",
+            "label": "Native Python hosted agent\nResponses request",
+            "classes": [
+              "compute"
+            ]
+          },
+          {
+            "id": "iq_call",
+            "label": "Required IQ invocation\nFull current question",
+            "classes": [
+              "compute"
+            ]
+          },
+          {
+            "id": "toolbox",
+            "label": "Required versioned toolbox\nRead-only Search, query_type simple",
+            "classes": [
+              "compute"
+            ]
+          },
+          {
+            "id": "gate",
+            "label": "Result gate\nBoth current calls must succeed",
+            "classes": [
+              "compute"
+            ]
+          },
+          {
+            "id": "synthesis",
+            "label": "Tool-free synthesis\nUntrusted evidence and source IDs",
+            "classes": [
+              "compute"
+            ]
+          },
+          {
+            "id": "planner_model",
+            "label": "Foundry planner model deployment\nGlobalStandard processing",
+            "classes": [
+              "data"
+            ]
+          },
+          {
+            "id": "answer_model",
+            "label": "Foundry answer model deployment\nGlobalStandard processing",
+            "classes": [
+              "data"
+            ]
+          },
+          {
+            "id": "failure",
+            "label": "Explicit failure\nNo grounded answer",
+            "classes": [
+              "caution"
+            ]
+          },
+          {
+            "id": "answer",
+            "label": "Grounded answer and source metadata\nOr uncertainty when evidence is insufficient",
+            "classes": []
+          },
+          {
+            "id": "legend",
+            "label": "Solid: runtime invocation or data/control flow\nDashed: optional or secondary runtime relationship\nPE = private endpoint; SPL = shared private link\nPhysical placement is in the topology contract\nGlobalStandard processing is not region-pinned; no control-plane deployment flow",
+            "classes": [
+              "caution"
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "L_operator_ingestion_0",
+            "source": "operator",
+            "target": "ingestion",
+            "label": "1. HTTPS POST via Function PE; Ingestion.Invoke",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_ingestion_fixture_0",
+            "source": "ingestion",
+            "target": "fixture",
+            "label": "2. Default: load constrained fixture",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_ingestion_sharepoint_0",
+            "source": "ingestion",
+            "target": "sharepoint",
+            "label": "2. Optional: Graph HTTPS via SCUS firewall; Sites.Selected",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_ingestion_staging_0",
+            "source": "ingestion",
+            "target": "staging",
+            "label": "3. Stage selected bytes via Blob PE",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_ingestion_analysis_0",
+            "source": "ingestion",
+            "target": "analysis",
+            "label": "4. Send bytes via Content Understanding PE",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_ingestion_index_write_0",
+            "source": "ingestion",
+            "target": "index_write",
+            "label": "5. Extract completed analysis; validate content",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_index_write_transit_0",
+            "source": "index_write",
+            "target": "transit",
+            "label": "5. Authenticated Search indexing",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_transit_index_0",
+            "source": "transit",
+            "target": "index",
+            "label": "5. HTTPS via CUS Search PE",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_operator_agent_0",
+            "source": "operator",
+            "target": "agent",
+            "label": "6. After successful ingestion: Responses via Foundry PE",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_agent_iq_call_0",
+            "source": "agent",
+            "target": "iq_call",
+            "label": "7. Invoke IQ first",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_iq_call_iq_0",
+            "source": "iq_call",
+            "target": "iq",
+            "label": "7. Search PE; knowledgeBases retrieve",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_iq_index_0",
+            "source": "iq",
+            "target": "index",
+            "label": "Retrieve indexed source content",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_iq_planner_model_0",
+            "source": "iq",
+            "target": "planner_model",
+            "label": "Model HTTPS via approved SPL",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_iq_call_toolbox_0",
+            "source": "iq_call",
+            "target": "toolbox",
+            "label": "8. After IQ result recorded, invoke toolbox",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_toolbox_index_0",
+            "source": "toolbox",
+            "target": "index",
+            "label": "8. Simple query via Search PE",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_iq_call_gate_0",
+            "source": "iq_call",
+            "target": "gate",
+            "label": "Current IQ result and references",
+            "arrow": "arrow_point",
+            "stroke": "dotted"
+          },
+          {
+            "id": "L_toolbox_gate_0",
+            "source": "toolbox",
+            "target": "gate",
+            "label": "9. Current toolbox result",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_gate_failure_0",
+            "source": "gate",
+            "target": "failure",
+            "label": "Any failed, empty, or mismatched result",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_gate_synthesis_0",
+            "source": "gate",
+            "target": "synthesis",
+            "label": "Both validated",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_synthesis_answer_model_0",
+            "source": "synthesis",
+            "target": "answer_model",
+            "label": "10. Responses model request; no tools",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_synthesis_answer_0",
+            "source": "synthesis",
+            "target": "answer",
+            "label": "10. Validate text; append retrieved metadata",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          },
+          {
+            "id": "L_synthesis_failure_0",
+            "source": "synthesis",
+            "target": "failure",
+            "label": "Synthesis failure",
+            "arrow": "arrow_point",
+            "stroke": "normal"
+          }
+        ],
+        "boundaries": [
+          {
+            "id": "scus_runtime",
+            "label": "South Central US - ingestion services, not a VNet boundary",
+            "children": [
+              "ingestion",
+              "fixture",
+              "staging",
+              "analysis",
+              "index_write"
+            ]
+          },
+          {
+            "id": "cus_search",
+            "label": "Central US - Search PaaS",
+            "children": [
+              "index",
+              "iq"
+            ]
+          },
+          {
+            "id": "cus_foundry",
+            "label": "Central US - Foundry PaaS and hosted application",
+            "children": [
+              "agent",
+              "iq_call",
+              "toolbox",
+              "gate",
+              "synthesis"
+            ]
+          }
+        ]
+      },
+      "routes": [
+        {
+          "id": "L_operator_ingestion_0",
+          "first": [
+            [
+              300,
+              600
+            ],
+            [
+              300,
+              640
+            ],
+            [
+              320,
+              640
+            ],
+            [
+              320,
+              660
+            ],
+            [
+              360,
+              660
+            ]
+          ],
+          "second": [
+            [
+              720,
+              660
+            ],
+            [
+              760,
+              660
+            ],
+            [
+              760,
+              620
+            ],
+            [
+              810,
+              620
+            ]
+          ],
+          "labelBox": {
+            "x": 360,
+            "y": 640,
+            "width": 360,
+            "height": 73,
+            "score": 156.5
+          }
+        },
+        {
+          "id": "L_ingestion_fixture_0",
+          "first": [
+            [
+              920,
+              640
+            ],
+            [
+              920,
+              760
+            ]
+          ],
+          "second": [
+            [
+              780,
+              760
+            ],
+            [
+              780,
+              440
+            ],
+            [
+              810,
+              440
+            ]
+          ],
+          "labelBox": {
+            "x": 600,
+            "y": 760,
+            "width": 360,
+            "height": 73,
+            "score": 276.5
+          }
+        },
+        {
+          "id": "L_ingestion_sharepoint_0",
+          "first": [
+            [
+              1020,
+              640
+            ],
+            [
+              1020,
+              900
+            ],
+            [
+              960,
+              900
+            ]
+          ],
+          "second": [
+            [
+              640,
+              953
+            ],
+            [
+              640,
+              980
+            ],
+            [
+              550,
+              980
+            ]
+          ],
+          "labelBox": {
+            "x": 600,
+            "y": 880,
+            "width": 360,
+            "height": 73,
+            "score": 36.5
+          }
+        },
+        {
+          "id": "L_ingestion_staging_0",
+          "first": [
+            [
+              1240,
+              600
+            ],
+            [
+              1320,
+              600
+            ],
+            [
+              1320,
+              640
+            ]
+          ],
+          "second": [
+            [
+              1560,
+              640
+            ],
+            [
+              1560,
+              580
+            ]
+          ],
+          "labelBox": {
+            "x": 1280,
+            "y": 640,
+            "width": 360,
+            "height": 73,
+            "score": 116.5
+          }
+        },
+        {
+          "id": "L_ingestion_analysis_0",
+          "first": [
+            [
+              1240,
+              600
+            ],
+            [
+              1280,
+              600
+            ],
+            [
+              1280,
+              580
+            ],
+            [
+              1440,
+              580
+            ],
+            [
+              1440,
+              600
+            ],
+            [
+              1720,
+              600
+            ],
+            [
+              1720,
+              640
+            ]
+          ],
+          "second": [
+            [
+              1960,
+              640
+            ],
+            [
+              1960,
+              560
+            ],
+            [
+              2010,
+              560
+            ]
+          ],
+          "labelBox": {
+            "x": 1680,
+            "y": 640,
+            "width": 360,
+            "height": 73,
+            "score": 76.5
+          }
+        },
+        {
+          "id": "L_ingestion_index_write_0",
+          "first": [
+            [
+              1240,
+              600
+            ],
+            [
+              1280,
+              600
+            ],
+            [
+              1280,
+              620
+            ],
+            [
+              2120,
+              620
+            ],
+            [
+              2120,
+              640
+            ]
+          ],
+          "second": [
+            [
+              2440,
+              660
+            ],
+            [
+              2480,
+              660
+            ],
+            [
+              2480,
+              580
+            ],
+            [
+              2570,
+              580
+            ]
+          ],
+          "labelBox": {
+            "x": 2080,
+            "y": 640,
+            "width": 360,
+            "height": 73,
+            "score": 76.5
+          }
+        },
+        {
+          "id": "L_index_write_transit_0",
+          "first": [
+            [
+              2570,
+              580
+            ],
+            [
+              2540,
+              580
+            ],
+            [
+              2540,
+              660
+            ],
+            [
+              2600,
+              660
+            ]
+          ],
+          "second": [
+            [
+              2600,
+              700
+            ],
+            [
+              2520,
+              700
+            ],
+            [
+              2520,
+              780
+            ],
+            [
+              2560,
+              780
+            ]
+          ],
+          "labelBox": {
+            "x": 2600,
+            "y": 643.5,
+            "width": 360,
+            "height": 73,
+            "score": 0
+          }
+        },
+        {
+          "id": "L_transit_index_0",
+          "first": [
+            [
+              3010,
+              780
+            ],
+            [
+              3040,
+              780
+            ],
+            [
+              3040,
+              683
+            ]
+          ],
+          "second": [
+            [
+              3240,
+              640
+            ],
+            [
+              3240,
+              580
+            ],
+            [
+              3270,
+              580
+            ]
+          ],
+          "labelBox": {
+            "x": 3000,
+            "y": 640,
+            "width": 314,
+            "height": 43,
+            "score": 84.5
+          }
+        },
+        {
+          "id": "L_operator_agent_0",
+          "first": [
+            [
+              540,
+              580
+            ],
+            [
+              580,
+              580
+            ],
+            [
+              580,
+              620
+            ],
+            [
+              740,
+              620
+            ],
+            [
+              740,
+              740
+            ],
+            [
+              580,
+              740
+            ],
+            [
+              580,
+              1163.5
+            ]
+          ],
+          "second": [
+            [
+              720,
+              1236.5
+            ],
+            [
+              720,
+              1280
+            ],
+            [
+              760,
+              1280
+            ],
+            [
+              760,
+              1260
+            ],
+            [
+              800,
+              1260
+            ]
+          ],
+          "labelBox": {
+            "x": 400,
+            "y": 1163.5,
+            "width": 360,
+            "height": 73,
+            "score": 10
+          }
+        },
+        {
+          "id": "L_agent_iq_call_0",
+          "first": [
+            [
+              1200,
+              1340
+            ],
+            [
+              1200,
+              1380
+            ],
+            [
+              1220,
+              1380
+            ],
+            [
+              1220,
+              1400
+            ]
+          ],
+          "second": [
+            [
+              1380,
+              1400
+            ],
+            [
+              1380,
+              1320
+            ],
+            [
+              1440,
+              1320
+            ]
+          ],
+          "labelBox": {
+            "x": 1200,
+            "y": 1400,
+            "width": 197,
+            "height": 43,
+            "score": 163
+          }
+        },
+        {
+          "id": "L_iq_call_iq_0",
+          "first": [
+            [
+              1880,
+              1220
+            ],
+            [
+              2040,
+              1220
+            ],
+            [
+              2040,
+              1140
+            ],
+            [
+              3120,
+              1140
+            ],
+            [
+              3120,
+              1040
+            ],
+            [
+              3020,
+              1040
+            ],
+            [
+              3020,
+              1000
+            ],
+            [
+              3060,
+              1000
+            ]
+          ],
+          "second": [
+            [
+              3380,
+              943.5
+            ],
+            [
+              3380,
+              870
+            ]
+          ],
+          "labelBox": {
+            "x": 3060,
+            "y": 943.5,
+            "width": 360,
+            "height": 73,
+            "score": 35.5
+          }
+        },
+        {
+          "id": "L_iq_index_0",
+          "first": [
+            [
+              3700,
+              760
+            ],
+            [
+              3740,
+              760
+            ],
+            [
+              3740,
+              660
+            ],
+            [
+              3720,
+              660
+            ]
+          ],
+          "second": [
+            [
+              3720,
+              660
+            ],
+            [
+              3760,
+              660
+            ],
+            [
+              3760,
+              580
+            ],
+            [
+              3700,
+              580
+            ]
+          ],
+          "labelBox": {
+            "x": 3360,
+            "y": 640,
+            "width": 360,
+            "height": 43,
+            "score": 61.5
+          }
+        },
+        {
+          "id": "L_iq_planner_model_0",
+          "first": [
+            [
+              3380,
+              870
+            ],
+            [
+              3380,
+              900
+            ],
+            [
+              3440,
+              900
+            ],
+            [
+              3440,
+              1100
+            ],
+            [
+              3240,
+              1100
+            ],
+            [
+              3240,
+              1320
+            ],
+            [
+              3380,
+              1320
+            ],
+            [
+              3380,
+              1360
+            ]
+          ],
+          "second": [
+            [
+              3380,
+              1360
+            ],
+            [
+              3380,
+              1300
+            ]
+          ],
+          "labelBox": {
+            "x": 3200,
+            "y": 1360,
+            "width": 356,
+            "height": 43,
+            "score": 263.5
+          }
+        },
+        {
+          "id": "L_iq_call_toolbox_0",
+          "first": [
+            [
+              1780,
+              1190
+            ],
+            [
+              1780,
+              1140
+            ],
+            [
+              680,
+              1140
+            ],
+            [
+              680,
+              1020
+            ],
+            [
+              1800,
+              1020
+            ],
+            [
+              1800,
+              993
+            ]
+          ],
+          "second": [
+            [
+              2080,
+              993
+            ],
+            [
+              2080,
+              1020
+            ],
+            [
+              3040,
+              1020
+            ],
+            [
+              3040,
+              1040
+            ],
+            [
+              3140,
+              1040
+            ],
+            [
+              3140,
+              1160
+            ],
+            [
+              2120,
+              1160
+            ],
+            [
+              2120,
+              1190
+            ]
+          ],
+          "labelBox": {
+            "x": 1760,
+            "y": 920,
+            "width": 360,
+            "height": 73,
+            "score": 263.5
+          }
+        },
+        {
+          "id": "L_toolbox_index_0",
+          "first": [
+            [
+              2520,
+              1220
+            ],
+            [
+              2893.5,
+              1220
+            ]
+          ],
+          "second": [
+            [
+              3200,
+              1198.5
+            ],
+            [
+              3200,
+              1040
+            ],
+            [
+              3460,
+              1040
+            ],
+            [
+              3460,
+              920
+            ],
+            [
+              3240,
+              920
+            ],
+            [
+              3240,
+              700
+            ],
+            [
+              3340,
+              700
+            ],
+            [
+              3340,
+              620
+            ],
+            [
+              3220,
+              620
+            ],
+            [
+              3220,
+              580
+            ],
+            [
+              3270,
+              580
+            ]
+          ],
+          "labelBox": {
+            "x": 2893.5,
+            "y": 1198.5,
+            "width": 333,
+            "height": 43,
+            "score": 8.5
+          }
+        },
+        {
+          "id": "L_iq_call_gate_0",
+          "first": [
+            [
+              1840,
+              1340
+            ],
+            [
+              1840,
+              1380
+            ],
+            [
+              1900,
+              1380
+            ],
+            [
+              1900,
+              1418.5
+            ]
+          ],
+          "second": [
+            [
+              2220,
+              1440
+            ],
+            [
+              2400,
+              1440
+            ],
+            [
+              2400,
+              1460
+            ],
+            [
+              2620,
+              1460
+            ],
+            [
+              2620,
+              1490
+            ]
+          ],
+          "labelBox": {
+            "x": 1860,
+            "y": 1418.5,
+            "width": 360,
+            "height": 43,
+            "score": 9
+          }
+        },
+        {
+          "id": "L_toolbox_gate_0",
+          "first": [
+            [
+              2520,
+              1340
+            ],
+            [
+              2560,
+              1340
+            ],
+            [
+              2560,
+              1398.5
+            ]
+          ],
+          "second": [
+            [
+              2701,
+              1420
+            ],
+            [
+              2780,
+              1420
+            ],
+            [
+              2780,
+              1460
+            ],
+            [
+              2800,
+              1460
+            ],
+            [
+              2800,
+              1490
+            ]
+          ],
+          "labelBox": {
+            "x": 2419,
+            "y": 1398.5,
+            "width": 282,
+            "height": 43,
+            "score": 1
+          }
+        },
+        {
+          "id": "L_gate_failure_0",
+          "first": [
+            [
+              2900,
+              1490
+            ],
+            [
+              2900,
+              1433
+            ]
+          ],
+          "second": [
+            [
+              3160,
+              1420
+            ],
+            [
+              3200,
+              1420
+            ],
+            [
+              3200,
+              1520
+            ],
+            [
+              3270,
+              1520
+            ]
+          ],
+          "labelBox": {
+            "x": 2800,
+            "y": 1360,
+            "width": 360,
+            "height": 73,
+            "score": 163.5
+          }
+        },
+        {
+          "id": "L_gate_synthesis_0",
+          "first": [
+            [
+              2570,
+              1560
+            ],
+            [
+              2500,
+              1560
+            ],
+            [
+              2500,
+              1541.5
+            ]
+          ],
+          "second": [
+            [
+              2380,
+              1541.5
+            ],
+            [
+              2380,
+              1580
+            ],
+            [
+              2310,
+              1580
+            ]
+          ],
+          "labelBox": {
+            "x": 2351.5,
+            "y": 1498.5,
+            "width": 177,
+            "height": 43,
+            "score": 0.5
+          }
+        },
+        {
+          "id": "L_synthesis_answer_model_0",
+          "first": [
+            [
+              1880,
+              1640
+            ],
+            [
+              1880,
+              1743.5
+            ]
+          ],
+          "second": [
+            [
+              1880,
+              1816.5
+            ],
+            [
+              1880,
+              1910
+            ]
+          ],
+          "labelBox": {
+            "x": 1700,
+            "y": 1743.5,
+            "width": 360,
+            "height": 73,
+            "score": 0.5
+          }
+        },
+        {
+          "id": "L_synthesis_answer_0",
+          "first": [
+            [
+              2200,
+              1640
+            ],
+            [
+              2200,
+              1803.5
+            ]
+          ],
+          "second": [
+            [
+              2520,
+              1860
+            ],
+            [
+              2720,
+              1860
+            ],
+            [
+              2720,
+              1920
+            ],
+            [
+              2750,
+              1920
+            ]
+          ],
+          "labelBox": {
+            "x": 2160,
+            "y": 1803.5,
+            "width": 360,
+            "height": 73,
+            "score": 6.5
+          }
+        },
+        {
+          "id": "L_synthesis_failure_0",
+          "first": [
+            [
+              2310,
+              1620
+            ],
+            [
+              2340,
+              1620
+            ],
+            [
+              2340,
+              1700
+            ],
+            [
+              2440,
+              1700
+            ]
+          ],
+          "second": [
+            [
+              2635,
+              1700
+            ],
+            [
+              3240,
+              1700
+            ],
+            [
+              3240,
+              1620
+            ],
+            [
+              3270,
+              1620
+            ]
+          ],
+          "labelBox": {
+            "x": 2440,
+            "y": 1680,
+            "width": 195,
+            "height": 43,
+            "score": 44
+          }
+        }
+      ],
+      "officialIconInstances": 6,
+      "geometryChecks": {
+        "nodeOverlaps": 0,
+        "textOverflows": 0,
+        "boundaryMembershipMismatches": 0,
+        "labelOverlaps": 0
+      }
+    }
+  ]
+}

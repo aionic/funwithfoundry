@@ -1,0 +1,78 @@
+{
+  "source": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+  "archiveUrl": "https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip",
+  "archiveSha256": "921594ccd1bf3d9c0a1bd7b6d924e050551a59342f2b353bb74bdcf761c35141",
+  "artwork": "Original SVG bytes, unmodified. Architectural documentation use only; Microsoft reserves all other rights.",
+  "assets": [
+    {
+      "file": "docs/diagrams/assets/035746832-icon-service-AI-Foundry.svg",
+      "archiveEntry": "Azure_Public_Service_Icons/Icons/ai + machine learning/035746832-icon-service-AI-Foundry.svg",
+      "sha256": "fab039a771f72780ae34e59065d61c66a02d3c347d50923ef2956f34912ea02c"
+    },
+    {
+      "file": "docs/diagrams/assets/038470497-icon-service-Azure-AI-Foundry-IQ.svg",
+      "archiveEntry": "Azure_Public_Service_Icons/Icons/ai + machine learning/038470497-icon-service-Azure-AI-Foundry-IQ.svg",
+      "sha256": "245e33416ecc1c745bfff6f72ebf1ffa04cfee1cdd0c1b1b8970d0844409c9c7"
+    },
+    {
+      "file": "docs/diagrams/assets/038470614-icon-service-Foundry-Models.svg",
+      "archiveEntry": "Azure_Public_Service_Icons/Icons/ai + machine learning/038470614-icon-service-Foundry-Models.svg",
+      "sha256": "9c671f141cb0e19b62e004628183ed8711ad16ec3b2e56b14c3cd035d5fac711"
+    },
+    {
+      "file": "docs/diagrams/assets/10044-icon-service-Cognitive-Search.svg",
+      "archiveEntry": "Azure_Public_Service_Icons/Icons/ai + machine learning/10044-icon-service-Cognitive-Search.svg",
+      "sha256": "f7af1213ce089236593835cb5564d6d3f01358cba6488fe562aa8bbc8adc3b38"
+    },
+    {
+      "file": "docs/diagrams/assets/10021-icon-service-Virtual-Machine.svg",
+      "archiveEntry": "Azure_Public_Service_Icons/Icons/compute/10021-icon-service-Virtual-Machine.svg",
+      "sha256": "092d18ffadec9ec0e5af129186dc7bc2a80544011e55f965604ed4b13873e0fc"
+    },
+    {
+      "file": "docs/diagrams/assets/10029-icon-service-Function-Apps.svg",
+      "archiveEntry": "Azure_Public_Service_Icons/Icons/compute/10029-icon-service-Function-Apps.svg",
+      "sha256": "1a6c9c108d5f63f7b78bc6fbc464059acd2eaa8c1d111e9bcd28a8b2cdf470b9"
+    },
+    {
+      "file": "docs/diagrams/assets/10121-icon-service-Azure-Cosmos-DB.svg",
+      "archiveEntry": "Azure_Public_Service_Icons/Icons/databases/10121-icon-service-Azure-Cosmos-DB.svg",
+      "sha256": "b6f1f2afac15762d1de44366d34984c5a3e6e58f94d9e81407ac01565212e8e3"
+    },
+    {
+      "file": "docs/diagrams/assets/10245-icon-service-Key-Vaults.svg",
+      "archiveEntry": "Azure_Public_Service_Icons/Icons/security/10245-icon-service-Key-Vaults.svg",
+      "sha256": "712b426f54f0fc50d0816dc79df709daa7ac5f93ccaf4e9b3527f627f6e9ad97"
+    },
+    {
+      "file": "docs/diagrams/assets/10086-icon-service-Storage-Accounts.svg",
+      "archiveEntry": "Azure_Public_Service_Icons/Icons/storage/10086-icon-service-Storage-Accounts.svg",
+      "sha256": "7190d3bb14ce30ce74bd0af873915830fe821e8c5f6ef6f3149e6f7cfb2aa4f7"
+    },
+    {
+      "file": "docs/diagrams/assets/02579-icon-service-Private-Endpoints.svg",
+      "archiveEntry": "Azure_Public_Service_Icons/Icons/other/02579-icon-service-Private-Endpoints.svg",
+      "sha256": "96de0bb7f0aeb1220d0fd6d337578d5e93dca017d6ea7d42d887aa329b2fd90d"
+    },
+    {
+      "file": "docs/diagrams/assets/02422-icon-service-Bastions.svg",
+      "archiveEntry": "Azure_Public_Service_Icons/Icons/networking/02422-icon-service-Bastions.svg",
+      "sha256": "7d3c33e355b9e180bb96491492ff856e379c27b3e7920526e2552c9b1593d3cb"
+    },
+    {
+      "file": "docs/diagrams/assets/10084-icon-service-Firewalls.svg",
+      "archiveEntry": "Azure_Public_Service_Icons/Icons/networking/10084-icon-service-Firewalls.svg",
+      "sha256": "154c416cc15b95b7c6c1ab61a5ecb33f14845197b7d163bd9dc6f1968c14be1e"
+    },
+    {
+      "file": "docs/diagrams/assets/10064-icon-service-DNS-Zones.svg",
+      "archiveEntry": "Azure_Public_Service_Icons/Icons/networking/10064-icon-service-DNS-Zones.svg",
+      "sha256": "e6aaa1380e974af7d0aba1bb8380ecfab3f95182a595a28692aa3f963bcf9fac"
+    },
+    {
+      "file": "docs/diagrams/assets/00427-icon-service-Private-Link.svg",
+      "archiveEntry": "Azure_Public_Service_Icons/Icons/networking/00427-icon-service-Private-Link.svg",
+      "sha256": "9990bbce78fc1ef3838fbe86e2ff3b297e721b1f6a6d037b4d3f3ce9abf4a5a2"
+    }
+  ]
+}

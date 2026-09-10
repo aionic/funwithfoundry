@@ -1,4 +1,44 @@
-# Native Foundry Agent Migration Status
+# Solution Accelerator Status
+
+**Status:** Rebuild and core live acceptance passed, 2026-09-10 UTC.
+**Tracking:** Beads epic `funwithfoundry-106`, live rehearsal `funwithfoundry-dfu`.
+
+See [docs/VALIDATION.md](docs/VALIDATION.md) for current results, correlation IDs,
+recovery boundaries and explicitly untested optional scenarios. Publication and
+GitHub-hosted checks are separate from this accepted working-tree deployment.
+
+- Implementation, approved architecture PNGs, and the full local release gate passed.
+- The old lab was fully torn down: both Foundry accounts purged, all three lab
+  resource groups verified absent, and Terraform state reconciled to empty.
+- Live private SFTP transferred and verified the four pinned bootstrap artifacts.
+  Temporary-account cleanup required an approved jumpbox restart and was verified
+  through a durable managed Run Command. Fresh-VM tool installation subsequently passed.
+- Fresh preflight passed 51 checks. The first Terraform apply created eight
+  resources, including the primary network and `fwfun2bafoundry` account.
+- Both capability hosts and the remaining infrastructure are now deployed. A
+  recovery apply completed 51 outstanding creations after a DNS request reset;
+  the subsequent full Terraform plan reported no changes.
+- The staged Infrastructure check completed, including Search shared-link approval.
+  Workload source transfer, all four artifact hashes, cleanup, and offline tool
+  installation are verified on the new jumpbox. Search/IQ initialization passed.
+- The Function remote build and `ingest` trigger discovery passed after retaining
+  the pinned PyJWT crypto extra for pip 23 compatibility. Seven live ingestion and
+  authorization checks, Search provenance and IQ retrieval passed.
+- Native agent version 1 and toolbox version 1 passed end-to-end dual retrieval,
+  all three golden questions and two same-version workflow readbacks. The verified
+  instance principal is `aae32b47-acce-485e-9097-342c428fcd5b`.
+- Final infrastructure verification passed 38 checks; public network denial passed
+  for all three endpoints. Final Terraform plan: no changes. Temporary transfer
+  users, tasks, keys, firewall rules and locks: none.
+- The jumpbox is confirmed deallocated. The rebuilt services remain deployed and
+  continue billing. All six implementation/rehearsal phases are closed; publication
+  follow-up `funwithfoundry-eei` remains open. No commit or push has been made.
+
+The deployed identifiers and results below describe the previous environment,
+which has been removed. Do not reuse its agent principal or treat its acceptance
+results as evidence for the new deterministic runtime.
+
+## Historical Native Foundry Agent Migration
 
 **Status:** Complete on 2026-09-09
 **Branch:** `main`

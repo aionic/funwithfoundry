@@ -1,68 +1,63 @@
-flowchart TB
-    operator["Operator"]
-    sharepoint["SharePoint Online<br/>Document source"]
+%%{init: {"theme":"neutral","layout":"elk","flowchart":{"nodeSpacing":80,"rankSpacing":100,"subGraphTitleMargin":{"top":12,"bottom":30}}}}%%
+flowchart LR
+    operator["Authorized demo caller<br/>Central US jumpbox MI"]
 
-    subgraph azure_subscription["Azure subscription"]
-        subgraph scus_paas["South Central US - PaaS resources"]
-            function_app["Azure Functions<br/>Ingestion orchestration"]
-            staging_storage["Storage account<br/>Private staging"]
-            content_understanding["Microsoft Foundry<br/>Content Understanding"]
-        end
-
-        subgraph scus_vnet["South Central US spoke VNet"]
-            function_integration["Function integration subnet"]
-            staging_pe["Blob private endpoint"]
-            content_pe["Foundry private endpoint"]
-        end
-
-        subgraph secured_vwan["Secured Virtual WAN"]
-            scus_firewall["Azure Firewall<br/>South Central US hub"]
-            cus_firewall["Azure Firewall<br/>Central US hub"]
-        end
-
-        subgraph cus_vnet["Central US spoke VNet"]
-            jumpbox["Jumpbox<br/>Managed identity"]
-            agent_subnet["Agent injection subnet<br/>Microsoft.App/environments"]
-            search_pe["Search private endpoint"]
-            foundry_pe["Foundry private endpoint"]
-        end
-
-        subgraph cus_paas["Central US - PaaS resources"]
-            search["Azure AI Search<br/>Index and knowledge base"]
-            foundry_account["Microsoft Foundry account<br/>Models and project"]
-            hosted_agent["Native hosted agent<br/>Python / Responses protocol"]
-            foundry_iq["Foundry IQ<br/>Knowledge base"]
-            toolbox["Foundry Toolbox<br/>Simple Search query"]
-        end
+    subgraph scus_runtime["South Central US - ingestion services, not a VNet boundary"]
+        ingestion["Ingestion Function<br/>Entra and input validation"]
+        fixture["Deterministic synthetic fixture<br/>Generated inside Function"]
+        staging["Blob Storage<br/>Staged source bytes"]
+        analysis["Content Understanding<br/>analyzeBinary and poll"]
+        index_write["Function extraction<br/>Provenance and per-document status"]
     end
 
-    function_app ---|VNet integration| function_integration
-    function_integration -->|1. HTTPS Microsoft Graph<br/>public egress| scus_firewall
-    scus_firewall -->|1. Document request| sharepoint
-    function_app -->|2. HTTPS blob write| staging_pe
-    staging_pe --> staging_storage
-    function_app -->|3. analyzeBinary over HTTPS| content_pe
-    content_pe --> content_understanding
-    function_app -->|4. Index markdown over HTTPS| scus_firewall
-    scus_firewall --> cus_firewall
-    cus_firewall --> search_pe
-    search_pe --> search
+    sharepoint["Optional SharePoint Online<br/>Source of record via Graph"]
+    transit["SCUS Function integration subnet<br/>SCUS firewall - vWAN - CUS firewall"]
 
-    operator -->|5. Private test invocation| jumpbox
-    jumpbox -->|6. Agent request over HTTPS| foundry_pe
-    foundry_pe --> foundry_account
-    foundry_account --- agent_subnet
-    foundry_account --> hosted_agent
-    hosted_agent -->|7a. retrieve_foundry_iq| foundry_iq
-    hosted_agent -->|7b. Toolbox Search tool| toolbox
-    foundry_iq --> search_pe
-    toolbox --> search_pe
-    search -->|Query planner via approved<br/>shared private link| foundry_account
-    hosted_agent -->|8. Grounded answer with citation| jumpbox
+    subgraph cus_search["Central US - Search PaaS"]
+        index["Text and semantic index<br/>Derived content, no vectors"]
+        iq["Foundry IQ knowledge base<br/>Retrieval planner"]
+    end
 
-    classDef external fill:#f7f7f7,stroke:#555,color:#111
-    classDef private fill:#dceefe,stroke:#2472a4,color:#111
-    classDef paas fill:#e5f4e3,stroke:#327a37,color:#111
-    class operator,sharepoint external
-    class function_integration,staging_pe,content_pe,jumpbox,agent_subnet,search_pe,foundry_pe,scus_firewall,cus_firewall private
-    class function_app,staging_storage,content_understanding,search,foundry_account,hosted_agent,foundry_iq,toolbox paas
+    subgraph cus_foundry["Central US - Foundry PaaS and hosted application"]
+        agent["Native Python hosted agent<br/>Responses request"]
+        iq_call["Required IQ invocation<br/>Full current question"]
+        toolbox["Required versioned toolbox<br/>Read-only Search, query_type simple"]
+        gate["Result gate<br/>Both current calls must succeed"]
+        synthesis["Tool-free synthesis<br/>Untrusted evidence and source IDs"]
+    end
+
+    planner_model["Foundry planner model deployment<br/>GlobalStandard processing"]
+    answer_model["Foundry answer model deployment<br/>GlobalStandard processing"]
+    failure["Explicit failure<br/>No grounded answer"]
+    answer["Grounded answer and source metadata<br/>Or uncertainty when evidence is insufficient"]
+
+    operator -->|"1. HTTPS POST via Function PE; Ingestion.Invoke"| ingestion
+    ingestion -->|"2. Default: load constrained fixture"| fixture
+    ingestion -.->|"2. Optional: Graph HTTPS via SCUS firewall; Sites.Selected"| sharepoint
+    ingestion -->|"3. Stage selected bytes via Blob PE"| staging
+    ingestion -->|"4. Send bytes via Content Understanding PE"| analysis
+    ingestion -->|"5. Extract completed analysis; validate content"| index_write
+    index_write -->|"5. Authenticated Search indexing"| transit
+    transit -->|"5. HTTPS via CUS Search PE"| index
+    operator -->|"6. After successful ingestion: Responses via Foundry PE"| agent
+    agent -->|"7. Invoke IQ first"| iq_call
+    iq_call -->|"7. Search PE; knowledgeBases retrieve"| iq
+    iq -->|"Retrieve indexed source content"| index
+    iq -->|"Model HTTPS via approved SPL"| planner_model
+    iq_call -->|"8. After IQ result recorded, invoke toolbox"| toolbox
+    toolbox -->|"8. Simple query via Search PE"| index
+    iq_call -.->|"Current IQ result and references"| gate
+    toolbox -->|"9. Current toolbox result"| gate
+    gate -->|"Any failed, empty, or mismatched result"| failure
+    gate -->|"Both validated"| synthesis
+    synthesis -->|"10. Responses model request; no tools"| answer_model
+    synthesis -->|"10. Validate text; append retrieved metadata"| answer
+    synthesis -->|"Synthesis failure"| failure
+
+    legend["Solid: runtime invocation or data/control flow<br/>Dashed: optional or secondary runtime relationship<br/>PE = private endpoint; SPL = shared private link<br/>Physical placement is in the topology contract<br/>GlobalStandard processing is not region-pinned; no control-plane deployment flow"]
+    classDef compute fill:#e2f1e9,stroke:#247452,color:#14271e
+    classDef data fill:#e6f1fc,stroke:#286491,color:#142533
+    classDef caution fill:#fff1d6,stroke:#946900,color:#382b0b
+    class ingestion,index_write,agent,iq_call,toolbox,gate,synthesis compute
+    class staging,analysis,index,iq,planner_model,answer_model data
+    class sharepoint,failure,legend caution

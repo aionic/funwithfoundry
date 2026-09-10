@@ -7,11 +7,12 @@ services:
         host: azure.ai.agent
         language: python
         uses:
-            - fwf1wj5gproj
+            - foundry-project
         env:
             FOUNDRY_PROJECT_ENDPOINT: ${FOUNDRY_PROJECT_ENDPOINT}
             AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
             SEARCH_ENDPOINT: ${SEARCH_ENDPOINT}
+            SEARCH_TOOL_NAME: ${SEARCH_CONNECTION_NAME}
             FOUNDRY_IQ_KNOWLEDGE_BASE: ${FOUNDRY_IQ_KNOWLEDGE_BASE}
             TOOLBOX_NAME: foundry-rag
         codeConfiguration:
@@ -29,8 +30,8 @@ services:
         protocols:
             - protocol: responses
               version: 2.0.0
-    fwf1wj5gproj:
+    foundry-project:
         host: azure.ai.project
-        endpoint: https://fwf1wj5gfoundry.services.ai.azure.com/api/projects/fwf1wj5gproj
+        endpoint: ${FOUNDRY_PROJECT_ENDPOINT}
 infra:
     provider: microsoft.foundry

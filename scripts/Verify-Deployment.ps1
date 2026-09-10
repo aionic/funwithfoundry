@@ -8,12 +8,13 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$NetworkResourceGroup   = 'rg-fwf-net',
-    [string]$PrimaryResourceGroup   = 'rg-fwf-cus',
-    [string]$SecondaryResourceGroup = 'rg-fwf-scus'
+    [string]$TerraformDir = (Join-Path $PSScriptRoot '..\terraform'),
+    [string]$NetworkResourceGroup,
+    [string]$PrimaryResourceGroup,
+    [string]$SecondaryResourceGroup
 )
 
-$ErrorActionPreference = 'Continue'
+$ErrorActionPreference = 'Stop'
 $results = [System.Collections.Generic.List[object]]::new()
 
 function Add-Check {
@@ -25,107 +26,150 @@ function Add-Check {
 
 function Get-Json {
     param([string[]]$CliArgs)
-    $raw = & az @CliArgs 2>$null
-    if ($LASTEXITCODE -ne 0 -or -not $raw) { return $null }
-    try { return ($raw | ConvertFrom-Json) } catch { return $null }
+    $raw = & az @CliArgs --subscription $lab.SubscriptionId
+    if ($LASTEXITCODE -ne 0 -or -not $raw) { throw 'Azure query failed or returned no JSON.' }
+    ConvertFrom-Json -InputObject ($raw -join "`n") -NoEnumerate
 }
 
 Write-Host "`n=== funwithfoundry :: deployment verification ===" -ForegroundColor Cyan
+$lab = & (Join-Path $PSScriptRoot 'Get-LabEnvironment.ps1') -TerraformDir $TerraformDir
+if ($LASTEXITCODE -ne 0 -or -not $lab.SubscriptionId) { throw 'Lab environment lookup failed.' }
+foreach ($pair in @(
+    @($NetworkResourceGroup, $lab.ResourceGroups.Network),
+    @($PrimaryResourceGroup, $lab.ResourceGroups.Primary),
+    @($SecondaryResourceGroup, $lab.ResourceGroups.Secondary)
+)) {
+    if (-not $pair[1] -or ($pair[0] -and $pair[0] -ne $pair[1])) { throw 'Resource group override does not match the Terraform-resolved environment.' }
+}
+$NetworkResourceGroup = $lab.ResourceGroups.Network
+$PrimaryResourceGroup = $lab.ResourceGroups.Primary
+$SecondaryResourceGroup = $lab.ResourceGroups.Secondary
+Push-Location $TerraformDir
+try {
+    $raw = terraform output -json
+    if ($LASTEXITCODE -ne 0 -or -not $raw) { throw 'Terraform verification outputs are unavailable.' }
+    $outputs = $raw | ConvertFrom-Json
+}
+finally { Pop-Location }
+if ($outputs.foundry_primary_account_id.value -ne $lab.FoundryId) { throw 'Terraform account identity does not match the active subscription/environment.' }
 
 # --- Public network access must be disabled everywhere ------------------------
 $targets = @(
-    @{ rg = $PrimaryResourceGroup;   type = 'Microsoft.CognitiveServices/accounts'; label = 'Foundry (primary)' }
-    @{ rg = $SecondaryResourceGroup; type = 'Microsoft.CognitiveServices/accounts'; label = 'Foundry (secondary)' }
-    @{ rg = $PrimaryResourceGroup;   type = 'Microsoft.Search/searchServices';      label = 'AI Search' }
-    @{ rg = $PrimaryResourceGroup;   type = 'Microsoft.Storage/storageAccounts';    label = 'Storage (primary)' }
-    @{ rg = $SecondaryResourceGroup; type = 'Microsoft.Storage/storageAccounts';    label = 'Storage (staging)' }
-    @{ rg = $PrimaryResourceGroup;   type = 'Microsoft.DocumentDB/databaseAccounts';label = 'Cosmos DB' }
-    @{ rg = $PrimaryResourceGroup;   type = 'Microsoft.KeyVault/vaults';            label = 'Key Vault' }
+    @{ rg = $PrimaryResourceGroup; type = 'Microsoft.CognitiveServices/accounts'; label = 'Foundry (primary)'; name = $lab.Primary.Account; groups = @('account') }
+    @{ rg = $SecondaryResourceGroup; type = 'Microsoft.CognitiveServices/accounts'; label = 'Foundry (secondary)'; name = $lab.Secondary.Account; groups = @('account') }
+    @{ rg = $PrimaryResourceGroup; type = 'Microsoft.Search/searchServices'; label = 'AI Search'; name = $lab.Primary.Search; groups = @('searchService') }
+    @{ rg = $PrimaryResourceGroup; type = 'Microsoft.Storage/storageAccounts'; label = 'Storage (primary)'; name = $lab.Primary.Storage; groups = @('blob') }
+    @{ rg = $SecondaryResourceGroup; type = 'Microsoft.Storage/storageAccounts'; label = 'Storage (staging)'; name = $lab.Secondary.StagingStorage; groups = @('blob') }
+    @{ rg = $PrimaryResourceGroup; type = 'Microsoft.DocumentDB/databaseAccounts'; label = 'Cosmos DB'; name = $lab.Primary.Cosmos; groups = @('Sql') }
+    @{ rg = $PrimaryResourceGroup; type = 'Microsoft.KeyVault/vaults'; label = 'Key Vault'; name = $lab.Primary.KeyVault; groups = @('vault') }
+    @{ rg = $SecondaryResourceGroup; type = 'Microsoft.Web/sites'; label = 'Ingestion Function'; name = $lab.Function.Name; groups = @('sites') }
+    @{ rg = $SecondaryResourceGroup; type = 'Microsoft.Storage/storageAccounts'; label = 'Function host storage'; name = $outputs.ingest_function.value.storage; groups = @('blob', 'queue', 'table') }
 )
 
-foreach ($t in $targets) {
-    $items = Get-Json @('resource', 'list', '-g', $t.rg, '--resource-type', $t.type, '-o', 'json')
-    if (-not $items) { Add-Check $t.label 'WARN' 'not found'; continue }
-    foreach ($item in @($items)) {
-        $detail = Get-Json @('resource', 'show', '--ids', $item.id, '-o', 'json')
+foreach ($target in $targets) {
+    $target.id = "/subscriptions/$($lab.SubscriptionId)/resourceGroups/$($target.rg)/providers/$($target.type)/$($target.name)"
+    try {
+        if (-not $target.name) { throw 'Expected resource name is missing from Terraform outputs.' }
+        $detail = Get-Json @('resource', 'show', '--ids', $target.id, '-o', 'json')
+        if ($detail.id -ne $target.id) { throw 'Expected resource missing or returned identity mismatched.' }
         $pna = $detail.properties.publicNetworkAccess
-        $isPrivate = "$pna" -in @('Disabled', 'SecuredByPerimeter')
-        $isSearch = $t.type -eq 'Microsoft.Search/searchServices'
+        $isPrivate = $pna -eq 'Disabled'
+        $isSearch = $target.type -eq 'Microsoft.Search/searchServices'
         $localAuthDisabled = $detail.properties.disableLocalAuth
-        $status = if ($isPrivate -and (-not $isSearch -or $localAuthDisabled)) { 'PASS' } else { 'FAIL' }
+        $status = if ($isPrivate -and (-not $isSearch -or ($localAuthDisabled -is [bool] -and $localAuthDisabled))) { 'PASS' } else { 'FAIL' }
         $authDetail = if ($isSearch) { " disableLocalAuth=$localAuthDisabled" } else { '' }
-        Add-Check "$($t.label): $($item.name)" $status "publicNetworkAccess=$pna$authDetail"
+        Add-Check "$($target.label): $($target.name)" $status "publicNetworkAccess=$pna$authDetail"
     }
+    catch { Add-Check $target.label 'FAIL' $_.Exception.Message }
 }
 
 # --- Private endpoints must all be Approved ----------------------------------
+$approved = @{}
 foreach ($rg in @($PrimaryResourceGroup, $SecondaryResourceGroup)) {
-    $peList = Get-Json @('network', 'private-endpoint', 'list', '-g', $rg, '-o', 'json')
-    if (-not $peList) { Add-Check "Private endpoints ($rg)" 'WARN' 'none found'; continue }
-    foreach ($pe in @($peList)) {
-        $conn = $pe.privateLinkServiceConnections[0]
-        $state = $conn.privateLinkServiceConnectionState.status
-        $status = if ($state -eq 'Approved') { 'PASS' } else { 'FAIL' }
-        $ip = ($pe.customDnsConfigs | Select-Object -First 1).ipAddresses -join ','
-        Add-Check "PE $($pe.name)" $status "$state ip=$ip"
+    try {
+        $peList = Get-Json @('network', 'private-endpoint', 'list', '-g', $rg, '-o', 'json')
+        if ($peList -isnot [array] -or -not $peList.Count) { throw 'Expected private endpoints are missing.' }
+        foreach ($endpoint in $peList) {
+            $connections = @(@($endpoint.privateLinkServiceConnections) + @($endpoint.manualPrivateLinkServiceConnections) | Where-Object { $_ })
+            if (-not $connections.Count -or $endpoint.provisioningState -ne 'Succeeded') { throw "Private endpoint $($endpoint.name) is incomplete." }
+            foreach ($connection in $connections) {
+                $state = $connection.privateLinkServiceConnectionState.status
+                $status = if ($state -eq 'Approved' -and $connection.privateLinkServiceId -and $connection.groupIds) { 'PASS' } else { 'FAIL' }
+                Add-Check "PE $($endpoint.name)" $status $state
+                if ($status -eq 'PASS') {
+                    foreach ($groupId in $connection.groupIds) { $approved["$($connection.privateLinkServiceId)/$groupId"] = $true }
+                }
+            }
+        }
+    }
+    catch { Add-Check "Private endpoints ($rg)" 'FAIL' $_.Exception.Message }
+}
+foreach ($target in $targets) {
+    foreach ($groupId in $target.groups) {
+        $status = if ($approved["$($target.id)/$groupId"]) { 'PASS' } else { 'FAIL' }
+        Add-Check "Expected PE: $($target.label)/$groupId" $status 'Approved connection to the expected resource required'
     }
 }
 
 # --- Agent subnet must stay delegated and free of a route table --------------
-$agent = Get-Json @('network', 'vnet', 'subnet', 'show', '-g', $PrimaryResourceGroup,
-    '--vnet-name', 'vnet-fwf-cus', '-n', 'snet-agent', '-o', 'json')
-if ($agent) {
-    $deleg = $agent.delegations[0].serviceName
-    $status = if ($deleg -eq 'Microsoft.App/environments') { 'PASS' } else { 'FAIL' }
-    Add-Check 'Agent subnet delegation' $status "$deleg prefix=$($agent.addressPrefix)"
+try {
+    $subnetId = $outputs.foundry_agent_subnet_id.value
+    if (-not $subnetId -or -not $subnetId.StartsWith("/subscriptions/$($lab.SubscriptionId)/resourceGroups/$PrimaryResourceGroup/", [StringComparison]::OrdinalIgnoreCase)) { throw 'Expected agent subnet ID is missing or out of scope.' }
+    $agent = Get-Json @('network', 'vnet', 'subnet', 'show', '--ids', $subnetId, '-o', 'json')
+    if ($agent.id -ne $subnetId) { throw 'Expected agent subnet not found.' }
+    $delegations = @($agent.delegations)
+    $status = if ($delegations.Count -eq 1 -and $delegations[0].serviceName -eq 'Microsoft.App/environments' -and -not $agent.routeTable.id) { 'PASS' } else { 'FAIL' }
+    Add-Check 'Agent subnet delegation and routing' $status 'Microsoft.App/environments delegation and no subnet route table required'
 }
+catch { Add-Check 'Agent subnet delegation and routing' 'FAIL' $_.Exception.Message }
 
 # --- Capability hosts ---------------------------------------------------------
-$accounts = Get-Json @('resource', 'list', '-g', $PrimaryResourceGroup,
-    '--resource-type', 'Microsoft.CognitiveServices/accounts', '-o', 'json')
-foreach ($acct in @($accounts)) {
-    $acctHosts = Get-Json @('rest', '--method', 'get', '--url',
-        "https://management.azure.com$($acct.id)/capabilityHosts?api-version=2025-04-01-preview", '-o', 'json')
-    foreach ($h in @($acctHosts.value)) {
-        $kind = $h.properties.capabilityHostKind
-        $state = $h.properties.provisioningState
-        $status = if ($kind -eq 'Agents' -and $state -eq 'Succeeded') { 'PASS' } else { 'FAIL' }
-        Add-Check "Account capability host" $status "$($h.name) kind=$kind state=$state"
-    }
-
-    $projects = Get-Json @('rest', '--method', 'get', '--url',
-        "https://management.azure.com$($acct.id)/projects?api-version=2025-06-01", '-o', 'json')
-    foreach ($proj in @($projects.value)) {
-        $projHosts = Get-Json @('rest', '--method', 'get', '--url',
-            "https://management.azure.com$($proj.id)/capabilityHosts?api-version=2025-04-01-preview", '-o', 'json')
-        foreach ($h in @($projHosts.value)) {
-            $properties = $h.properties
-            $connectionsReady = $properties.vectorStoreConnections -and
-                $properties.storageConnections -and $properties.threadStorageConnections
-            $status = if ($properties.capabilityHostKind -eq 'Agents' -and
-                $properties.provisioningState -eq 'Succeeded' -and $connectionsReady) { 'PASS' } else { 'FAIL' }
-            $connections = "search=$($properties.vectorStoreConnections -join ',') storage=$($properties.storageConnections -join ',') thread=$($properties.threadStorageConnections -join ',')"
-            Add-Check "Project capability host" $status "$($h.name) kind=$($properties.capabilityHostKind) state=$($properties.provisioningState) $connections"
+foreach ($kind in @('Account', 'Project')) {
+    try {
+        $parentId = $lab.FoundryId
+        if ($kind -eq 'Project') {
+            if (-not $lab.Primary.Project) { throw 'Expected project name is missing.' }
+            $parentId += "/projects/$($lab.Primary.Project)"
+            $project = Get-Json @('rest', '--method', 'get', '--url', "https://management.azure.com${parentId}?api-version=2025-06-01", '-o', 'json')
+            if ($project.id -ne $parentId) { throw 'Expected project is missing.' }
+        }
+        $hosts = Get-Json @('rest', '--method', 'get', '--url', "https://management.azure.com$parentId/capabilityHosts?api-version=2025-04-01-preview", '-o', 'json')
+        if (-not $hosts.value) { throw 'Expected capability host is missing.' }
+        foreach ($hostItem in $hosts.value) {
+            $properties = $hostItem.properties
+            $ready = $properties.capabilityHostKind -eq 'Agents' -and $properties.provisioningState -eq 'Succeeded'
+            if ($kind -eq 'Project') {
+                $ready = $ready -and $properties.vectorStoreConnections -contains $lab.Primary.Search -and
+                    $properties.storageConnections -contains $lab.Primary.Storage -and $properties.threadStorageConnections -contains $lab.Primary.Cosmos
+            }
+            $status = if ($ready) { 'PASS' } else { 'FAIL' }
+            Add-Check "$kind capability host" $status "$($hostItem.name) state=$($properties.provisioningState)"
         }
     }
+    catch { Add-Check "$kind capability host" 'FAIL' $_.Exception.Message }
 }
 
 # --- Routing intent -----------------------------------------------------------
 # routingIntent is a child resource and is not enumerable via 'az resource list';
 # it has to be read off the hub directly.
-$hubs = Get-Json @('resource', 'list', '-g', $NetworkResourceGroup,
-    '--resource-type', 'Microsoft.Network/virtualHubs', '-o', 'json')
-foreach ($hub in @($hubs)) {
-    $intent = Get-Json @('rest', '--method', 'get', '--url',
-        "https://management.azure.com$($hub.id)/routingIntent?api-version=2024-05-01", '-o', 'json')
-    $policy = @($intent.value)[0].properties.routingPolicies
-    $status = if ($policy) { 'PASS' } else { 'FAIL' }
-    Add-Check "Routing intent ($($hub.name))" $status (($policy | ForEach-Object { $_.name }) -join ', ')
+foreach ($region in @('primary', 'secondary')) {
+    try {
+        $hubId = $outputs.hub_ids.value.$region
+        if (-not $hubId -or -not $hubId.StartsWith("/subscriptions/$($lab.SubscriptionId)/resourceGroups/$NetworkResourceGroup/", [StringComparison]::OrdinalIgnoreCase)) { throw 'Expected hub ID is missing or out of scope.' }
+        $intent = Get-Json @('rest', '--method', 'get', '--url', "https://management.azure.com$hubId/routingIntent?api-version=2024-05-01", '-o', 'json')
+        $policies = @($intent.value.properties.routingPolicies)
+        foreach ($destination in @('Internet', 'PrivateTraffic')) {
+            $matching = @($policies | Where-Object { $_.destinations -contains $destination -and $_.nextHop })
+            $status = if ($matching.Count -eq 1) { 'PASS' } else { 'FAIL' }
+            Add-Check "Routing intent ($region/$destination)" $status 'A next hop for the required destination must exist'
+        }
+    }
+    catch { Add-Check "Routing intent ($region)" 'FAIL' $_.Exception.Message }
 }
 
 Write-Host "`n=== Verdict ===" -ForegroundColor Cyan
-$fails = $results | Where-Object Status -eq 'FAIL'
-$warns = $results | Where-Object Status -eq 'WARN'
+$fails = @($results | Where-Object Status -eq 'FAIL')
+$warns = @($results | Where-Object Status -eq 'WARN')
 Write-Host ("FAIL: {0}   WARN: {1}   PASS: {2}" -f $fails.Count, $warns.Count, ($results | Where-Object Status -eq 'PASS').Count)
 if ($fails) {
     Write-Host "`nBlocking:" -ForegroundColor Red
@@ -140,3 +184,6 @@ Not covered here - these require the jumpbox:
   * cross-region reachability from the SCUS function subnet to CUS AI Search
   * Content Understanding availability in South Central US (only proven by running an analyzer)
 '@ -ForegroundColor DarkGray
+
+$results
+if ($fails.Count -or $warns.Count -or -not $results.Count) { throw 'Deployment verification failed; expected controls are missing, unhealthy, or inconclusive.' }

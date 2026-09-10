@@ -1,58 +1,99 @@
-flowchart TB
-    operator["Operator<br/>Owner role active"]
-
-    subgraph phase_one["Phase 1 - immutable network injection"]
-        terraform_target["Terraform targeted apply"]
-        network["Central US spoke VNet<br/>Dedicated /24 agent subnet"]
-        foundry_account["Microsoft Foundry account<br/>Network injection set at creation"]
+%%{init: {"theme":"neutral","layout":"elk","flowchart":{"nodeSpacing":80,"rankSpacing":100,"subGraphTitleMargin":{"top":12,"bottom":30}}}}%%
+flowchart LR
+    subgraph control_plane["Control plane - deployment, not document flow"]
+        operator["Approved operator or trusted CI<br/>Terraform and staged orchestration"]
+        arm["Azure Resource Manager<br/>Infrastructure and VM Run Command"]
+        entra["Microsoft Entra ID<br/>API app and Ingestion.Invoke role"]
     end
 
-    subgraph account_host_phase["Phase 2 - account capability host"]
-        ensure_script["Ensure-AgentCapabilityHost.ps1<br/>Idempotent ARM operation"]
-        account_host["Account capability host<br/>Agents / platform-generated name"]
+    subgraph central["Central US - runtime resource placement"]
+        subgraph cus_vnet["Central US spoke VNet"]
+            subgraph bastion_subnet["AzureBastionSubnet"]
+                bastion["Azure Bastion Standard"]
+            end
+            subgraph jumpbox_subnet["Jumpbox subnet"]
+                jumpbox["Windows jumpbox<br/>Authorized managed identity"]
+            end
+            subgraph agent_subnet["Dedicated agent subnet - Microsoft.App/environments"]
+                injected_compute["Platform-managed agent compute<br/>Injected outbound execution"]
+            end
+            subgraph cus_pe_subnet["Private endpoint subnet"]
+                foundry_pe["Foundry account PE"]
+                search_pe["Search PE"]
+                state_pe["State-service PEs<br/>Blob, Cosmos DB, Key Vault"]
+            end
+        end
+        foundry["Microsoft Foundry PaaS<br/>Account, project, hosted agent, toolbox"]
+        models["Foundry model deployments<br/>GlobalStandard, processing not region-pinned"]
+        search["Azure AI Search PaaS<br/>Text index and IQ planner"]
+        shared_link["Search-managed shared private link<br/>Approved openai_account"]
+        state["Azure PaaS dependencies<br/>Storage, Cosmos DB, Key Vault"]
     end
 
-    subgraph full_apply["Phase 3 - project and dependencies"]
-        terraform_apply["Terraform full apply"]
-        project["Foundry project<br/>System-assigned identity"]
-        connections["Project connections<br/>Search / Storage / Cosmos DB"]
-        rbac["Entra ID and Azure RBAC<br/>No data-service shared keys"]
-        project_host["Project capability host<br/>Agents"]
+    subgraph secured_vwan["Virtual WAN Standard - secured regional hubs"]
+        cus_firewall["Central US hub<br/>Azure Firewall Standard"]
+        scus_firewall["South Central US hub<br/>Azure Firewall Standard"]
     end
 
-    subgraph proof["Functional proof"]
-        toolbox["Foundry Toolbox<br/>Search query_type simple"]
-        agent_test["Native Python hosted agent<br/>Responses protocol"]
-        iq_tool["Foundry IQ retrieval"]
-        search_tool["Toolbox Search retrieval"]
-        grounded_answer["Completed response<br/>Both tools and one source"]
+    subgraph south_central["South Central US - runtime resource placement"]
+        subgraph scus_vnet["South Central US spoke VNet"]
+            subgraph function_subnet["Function integration subnet - Microsoft.App/environments"]
+                function_integration["Function outbound VNet integration"]
+            end
+            subgraph scus_pe_subnet["Private endpoint subnet"]
+                function_pe["Function app and SCM PE"]
+                cu_pe["Content Understanding PE"]
+                storage_pe["Storage PEs<br/>Staging and Function host storage"]
+            end
+        end
+        function_app["Azure Functions PaaS<br/>Flex Consumption ingestion API"]
+        cu["Microsoft Foundry PaaS<br/>Content Understanding and model deployments"]
+        storage["Azure Storage PaaS<br/>Staging and Function host storage"]
     end
 
-    operator -->|1. Apply account prerequisites| terraform_target
-    terraform_target --> network
-    network -->|Dedicated delegated subnet| foundry_account
-    terraform_target --> foundry_account
-    operator -->|2. Ensure singleton host| ensure_script
-    foundry_account --> ensure_script
-    ensure_script --> account_host
-    operator -->|3. Complete deployment| terraform_apply
-    account_host -->|Must exist first| terraform_apply
-    terraform_apply --> project
-    terraform_apply --> connections
-    terraform_apply --> rbac
-    project --> project_host
-    connections --> project_host
-    rbac --> project_host
-    project_host -->|4. Deploy toolbox| toolbox
-    toolbox -->|5. Deploy and run| agent_test
-    agent_test --> iq_tool
-    agent_test --> search_tool
-    iq_tool --> grounded_answer
-    search_tool --> grounded_answer
+    dns["Private DNS zones<br/>Linked to both spokes"]
+    public_graph["Public Microsoft Graph / SharePoint<br/>Optional site-scoped source"]
 
-    classDef action fill:#f7f7f7,stroke:#555,color:#111
-    classDef control fill:#dceefe,stroke:#2472a4,color:#111
-    classDef resource fill:#e5f4e3,stroke:#327a37,color:#111
-    class operator,terraform_target,ensure_script,terraform_apply action
-    class network,connections,rbac control
-    class foundry_account,account_host,project,project_host,toolbox,agent_test,iq_tool,search_tool,grounded_answer resource
+    operator -.->|"Deployment; ARM permissions"| arm
+    operator -.->|"Separate tenant permissions"| entra
+    arm -.->|"Account injection, account host, then project host"| foundry
+    arm -.->|"Run Command; trusted scripts only"| jumpbox
+    entra -.->|"Assign API application role to jumpbox MI"| jumpbox
+    entra -.->|"Tenant, audience, role and caller validation"| function_app
+    operator -.->|"Optional interactive access; not yet proven"| bastion
+    bastion -.->|"Administrative RDP"| jumpbox
+    jumpbox -->|"Responses HTTPS"| foundry_pe
+    foundry_pe -->|"Private Link ingress"| foundry
+    foundry -.->|"Compute injection association; PaaS stays outside VNet"| injected_compute
+    injected_compute -->|"IQ and toolbox retrieval HTTPS"| search_pe
+    search_pe -->|"Private Link"| search
+    injected_compute -->|"Platform state dependencies"| state_pe
+    state_pe -->|"Private Link"| state
+    injected_compute -->|"Model HTTPS"| foundry_pe
+    foundry -->|"Model API"| models
+    search -->|"IQ planner model request; Search MI"| shared_link
+    shared_link -->|"Private Link to model, not hosted agent"| models
+    jumpbox -->|"Authorized ingestion HTTPS"| cus_firewall
+    jumpbox -.->|"Deployment: private SCM via secured transit"| function_pe
+    cus_firewall -->|"CUS to SCUS private transit"| scus_firewall
+    scus_firewall -->|"Ingress HTTPS"| function_pe
+    function_pe -->|"Private Link"| function_app
+    function_app -.->|"Outbound integration association"| function_integration
+    function_integration -->|"analyzeBinary HTTPS"| cu_pe
+    cu_pe -->|"Private Link"| cu
+    function_integration -->|"Stage bytes and host storage"| storage_pe
+    storage_pe -->|"Private Link"| storage
+    function_integration -->|"Index write and optional Graph fetch"| scus_firewall
+    scus_firewall -->|"SCUS to CUS indexing transit"| cus_firewall
+    cus_firewall -->|"HTTPS indexing via Search PE"| search_pe
+    scus_firewall -->|"Optional public HTTPS; Sites.Selected"| public_graph
+    dns -.->|"Zone links and private name resolution"| cus_vnet
+    dns -.->|"Zone links and private name resolution"| scus_vnet
+
+    legend["Solid: initiating runtime dependency<br/>Dashed: control plane, identity or association as labeled<br/>Two regions separate capabilities, not HA or failover<br/>Broad firewall allowlist is POC policy, not zero-trust<br/>Telemetry and installer egress omitted; no AMPLS"]
+    classDef private fill:#e2f1e9,stroke:#247452,color:#14271e
+    classDef paas fill:#e6f1fc,stroke:#286491,color:#142533
+    classDef control fill:#fff1d6,stroke:#946900,color:#382b0b
+    class bastion,jumpbox,injected_compute,foundry_pe,search_pe,state_pe,cus_firewall,scus_firewall,function_integration,function_pe,cu_pe,storage_pe private
+    class foundry,models,search,shared_link,state,function_app,cu,storage paas
+    class operator,arm,entra,dns,public_graph,legend control

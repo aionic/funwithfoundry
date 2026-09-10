@@ -11,10 +11,44 @@ param(
     [string]$ProjectEndpoint,
     [string]$ModelDeployment,
     [string]$SearchEndpoint,
-    [string]$SearchConnectionName
+    [string]$SearchConnectionName,
+    [switch]$AzdDebug,
+    [switch]$ReadOnly
 )
 
 $ErrorActionPreference = 'Stop'
+
+function Invoke-Azd {
+    param([string[]]$CliArguments)
+    $logDirectory = Join-Path (Get-Location) '.azure\native-diagnostics'
+    $null = New-Item -ItemType Directory -Path $logDirectory -Force
+    $logPath = Join-Path $logDirectory "$([guid]::NewGuid().ToString('N')).log"
+    $readOnly = ($CliArguments[0] -eq 'env' -and $CliArguments[1] -eq 'list') -or
+        ($CliArguments[0] -eq 'ai' -and $CliArguments[2] -in @('list', 'show'))
+    $attemptLimit = if ($readOnly) { 3 } else { 1 }
+    if ($AzdDebug) { $CliArguments += '--debug' }
+    for ($attempt = 1; $attempt -le $attemptLimit; $attempt++) {
+        $ErrorActionPreference = 'Continue'
+        $result = & azd @CliArguments 2>> $logPath
+        $exitCode = $LASTEXITCODE
+        $ErrorActionPreference = 'Stop'
+        if ($exitCode -eq 0) { break }
+        if (($result -join ' ') -notmatch 'AzureDeveloperCLICredential|connection.*reset|temporarily unavailable') { break }
+    }
+    if ($exitCode -ne 0) { throw "ACTION: azd $($CliArguments[0..([Math]::Min(2, $CliArguments.Count - 1))] -join ' ') failed (exit $exitCode). Inspect protected runner diagnostics: $logPath" }
+    $result
+}
+
+if ($ReadOnly) {
+    if ([string]::IsNullOrWhiteSpace($ProjectEndpoint) -or [string]::IsNullOrWhiteSpace($EnvironmentName)) {
+        throw 'Read-only native metadata requires ProjectEndpoint and EnvironmentName.'
+    }
+    $agent = Invoke-Azd @('ai', 'agent', 'show', 'funwithfoundry-rag-agent', '--environment', $EnvironmentName, '--output', 'json') | ConvertFrom-Json
+    if ($null -eq $agent) { throw 'Native agent readback returned no metadata.' }
+    $toolbox = Invoke-Azd @('ai', 'toolbox', 'show', 'foundry-rag', '--project-endpoint', $ProjectEndpoint, '--output', 'json') | ConvertFrom-Json
+    if ($null -eq $toolbox) { throw 'Native toolbox readback returned no metadata.' }
+    return [pscustomobject]@{ agent = $agent; toolbox = $toolbox }
+}
 
 if (-not $ProjectId) {
     $primary = terraform -chdir=$TerraformDir output -json foundry_primary | ConvertFrom-Json
@@ -41,50 +75,60 @@ foreach ($entry in $requiredValues.GetEnumerator()) {
     if (-not $entry.Value) { throw "Missing required deployment value: $($entry.Key)" }
 }
 
-if (-not (azd env list --output json | ConvertFrom-Json | Where-Object name -eq $EnvironmentName)) {
-    azd env new $EnvironmentName --no-prompt | Out-Null
+$environments = Invoke-Azd @('env', 'list', '--output', 'json') | ConvertFrom-Json
+if (-not ($environments | Where-Object name -eq $EnvironmentName)) {
+    Invoke-Azd @('env', 'new', $EnvironmentName, '--no-prompt') | Out-Null
 }
-azd env select $EnvironmentName --no-prompt | Out-Null
-azd env set AZURE_AI_PROJECT_ID $ProjectId | Out-Null
-azd env set AZURE_LOCATION $Location | Out-Null
-azd env set FOUNDRY_PROJECT_ENDPOINT $ProjectEndpoint | Out-Null
-azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME $ModelDeployment | Out-Null
-azd env set SEARCH_ENDPOINT $SearchEndpoint | Out-Null
-azd env set SEARCH_CONNECTION_NAME $SearchConnectionName | Out-Null
-azd env set FOUNDRY_IQ_KNOWLEDGE_BASE 'spo-knowledge-base' | Out-Null
+Invoke-Azd @('env', 'select', $EnvironmentName, '--no-prompt') | Out-Null
+Invoke-Azd @('env', 'set', 'AZURE_AI_PROJECT_ID', $ProjectId) | Out-Null
+Invoke-Azd @('env', 'set', 'AZURE_LOCATION', $Location) | Out-Null
+Invoke-Azd @('env', 'set', 'FOUNDRY_PROJECT_ENDPOINT', $ProjectEndpoint) | Out-Null
+Invoke-Azd @('env', 'set', 'AZURE_AI_MODEL_DEPLOYMENT_NAME', $ModelDeployment) | Out-Null
+Invoke-Azd @('env', 'set', 'SEARCH_ENDPOINT', $SearchEndpoint) | Out-Null
+Invoke-Azd @('env', 'set', 'SEARCH_CONNECTION_NAME', $SearchConnectionName) | Out-Null
+Invoke-Azd @('env', 'set', 'FOUNDRY_IQ_KNOWLEDGE_BASE', 'spo-knowledge-base') | Out-Null
 
-$connections = azd ai connection list --project-endpoint $ProjectEndpoint --output json | ConvertFrom-Json
+$connections = Invoke-Azd @('ai', 'connection', 'list', '--project-endpoint', $ProjectEndpoint, '--output', 'json') | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0) { throw 'Unable to list Foundry project connections.' }
 if (-not ($connections | Where-Object name -eq $SearchConnectionName)) {
     throw "The Terraform-managed Search connection '$SearchConnectionName' was not found."
 }
 
-$toolboxes = azd ai toolbox list --project-endpoint $ProjectEndpoint --output json | ConvertFrom-Json
+$toolboxResponse = Invoke-Azd @('ai', 'toolbox', 'list', '--project-endpoint', $ProjectEndpoint, '--output', 'json') | ConvertFrom-Json
+$toolboxes = if ($toolboxResponse.PSObject.Properties.Name -contains 'toolboxes') { @($toolboxResponse.toolboxes) } else { @($toolboxResponse) }
 if ($LASTEXITCODE -ne 0) { throw 'Unable to list Foundry toolboxes.' }
+$toolbox = $null
 if ($toolboxes | Where-Object name -eq 'foundry-rag') {
-    $toolbox = azd ai toolbox show foundry-rag --project-endpoint $ProjectEndpoint --output json | ConvertFrom-Json
+    $toolbox = Invoke-Azd @('ai', 'toolbox', 'show', 'foundry-rag', '--project-endpoint', $ProjectEndpoint, '--output', 'json') | ConvertFrom-Json
     if ($LASTEXITCODE -ne 0) { throw 'Unable to read the foundry-rag toolbox.' }
 }
 
-$toolboxQueryType = $toolbox.version.tools[0].azure_ai_search.indexes[0].query_type
-if ($toolboxQueryType -ne 'simple') {
+$searchConnectionId = "$($ProjectId.TrimEnd('/'))/connections/$SearchConnectionName"
+$tools = @($toolbox.version.tools | Where-Object { $null -ne $_ })
+$indexes = @($tools | ForEach-Object { $_.azure_ai_search.indexes } | Where-Object { $null -ne $_ })
+$matches = $tools.Count -eq 1 -and $indexes.Count -eq 1
+if ($matches) {
+    $matches = $tools[0].type -eq 'azure_ai_search' -and $tools[0].name -eq $SearchConnectionName -and
+        $indexes[0].project_connection_id -eq $searchConnectionId -and $indexes[0].index_name -eq 'spo-docs' -and
+        $indexes[0].query_type -eq 'simple' -and $indexes[0].top_k -eq 5
+}
+if (-not $matches) {
     $toolboxTemplate = Get-Content (Join-Path $PSScriptRoot '..\toolbox.yaml') -Raw
-    $searchConnectionId = "$ProjectId/connections/$SearchConnectionName"
     $toolboxDefinition = $toolboxTemplate.Replace('__SEARCH_CONNECTION_NAME__', $SearchConnectionName).Replace('__SEARCH_CONNECTION_ID__', $searchConnectionId)
-    $toolboxPath = Join-Path $env:TEMP 'funwithfoundry-toolbox.yaml'
+    $toolboxPath = Join-Path $env:TEMP ("funwithfoundry-toolbox-$([guid]::NewGuid().ToString('N')).yaml")
     Set-Content -Path $toolboxPath -Value $toolboxDefinition -Encoding utf8
     try {
         if ($toolbox) {
-            $deployedToolbox = azd ai toolbox deploy $toolboxPath `
-                --project-endpoint $ProjectEndpoint --output json --no-prompt | ConvertFrom-Json
+            $deployedToolbox = Invoke-Azd @('ai', 'toolbox', 'deploy', $toolboxPath, '--project-endpoint', $ProjectEndpoint, '--output', 'json', '--no-prompt') | ConvertFrom-Json
             if ($LASTEXITCODE -ne 0) { throw 'Unable to deploy the foundry-rag toolbox.' }
-            azd ai toolbox publish foundry-rag $deployedToolbox.version.version `
-                --project-endpoint $ProjectEndpoint --no-prompt | Out-Null
+            $version = $deployedToolbox.version.version
+            if (-not $version -and $deployedToolbox.version -is [string]) { $version = $deployedToolbox.version }
+            if (-not $version) { throw 'Toolbox deployment returned no version; refusing to publish an unknown version.' }
+            Invoke-Azd @('ai', 'toolbox', 'publish', 'foundry-rag', $version, '--project-endpoint', $ProjectEndpoint, '--no-prompt') | Out-Null
             if ($LASTEXITCODE -ne 0) { throw 'Unable to publish the foundry-rag toolbox version.' }
         }
         else {
-            azd ai toolbox create foundry-rag --from-file $toolboxPath `
-                --project-endpoint $ProjectEndpoint --no-prompt | Out-Null
+            Invoke-Azd @('ai', 'toolbox', 'create', 'foundry-rag', '--from-file', $toolboxPath, '--project-endpoint', $ProjectEndpoint, '--no-prompt') | Out-Null
             if ($LASTEXITCODE -ne 0) { throw 'Unable to create the foundry-rag toolbox.' }
         }
     }
@@ -93,11 +137,11 @@ if ($toolboxQueryType -ne 'simple') {
     }
 }
 
-$toolbox = azd ai toolbox show foundry-rag --project-endpoint $ProjectEndpoint --output json | ConvertFrom-Json
+$toolbox = Invoke-Azd @('ai', 'toolbox', 'show', 'foundry-rag', '--project-endpoint', $ProjectEndpoint, '--output', 'json') | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0 -or -not $toolbox.endpoint) { throw 'Unable to resolve the toolbox endpoint.' }
 
-azd deploy funwithfoundry-rag-agent --environment $EnvironmentName --no-prompt
+Invoke-Azd @('deploy', 'funwithfoundry-rag-agent', '--environment', $EnvironmentName, '--no-prompt')
 if ($LASTEXITCODE -ne 0) { throw 'Native Foundry agent deployment failed.' }
 
-azd ai agent show funwithfoundry-rag-agent --environment $EnvironmentName --output json
+Invoke-Azd @('ai', 'agent', 'show', 'funwithfoundry-rag-agent', '--environment', $EnvironmentName, '--output', 'json')
 if ($LASTEXITCODE -ne 0) { throw 'Unable to verify the native Foundry agent.' }

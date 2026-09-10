@@ -1,0 +1,17 @@
+name: Change request
+description: Propose a scoped accelerator improvement.
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: User outcome and scope
+      description: Explain the need, constraints, and what is out of scope.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance evidence
+      description: Describe a small cloud-free check and any separately approved live prerequisites.
+    validations:
+      required: true

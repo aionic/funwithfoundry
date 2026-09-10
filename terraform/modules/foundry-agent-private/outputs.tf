@@ -51,3 +51,11 @@ output "agent_tool_model_name" {
   description = "Model to use for agents that attach the azure_ai_search tool."
   value       = azurerm_cognitive_deployment.agent_tools.name
 }
+
+output "planner_deployment" {
+  value = azurerm_cognitive_deployment.chat.name
+}
+
+output "planner_model" {
+  value = var.chat_model.name
+}

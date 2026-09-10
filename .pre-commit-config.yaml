@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: repository-syntax
+        name: Repository syntax (configured Python required)
+        language: system
+        entry: pwsh -NoProfile -File scripts/Test-Repository.ps1 -Quick
+        pass_filenames: false
+        always_run: true

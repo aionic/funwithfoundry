@@ -1,6 +1,7 @@
 terraform {
   required_providers {
-    azurerm = { source = "hashicorp/azurerm" }
+    azurerm = { source = "hashicorp/azurerm", version = ">= 4.81.0, < 5.0" }
+    azuread = { source = "hashicorp/azuread", version = ">= 3.9.0, < 4.0" }
     azapi   = { source = "Azure/azapi" }
     random  = { source = "hashicorp/random" }
   }
@@ -148,6 +149,26 @@ resource "azurerm_function_app_flex_consumption" "this" {
 
   site_config {}
 
+  auth_settings_v2 {
+    auth_enabled           = true
+    require_authentication = true
+    unauthenticated_action = "Return401"
+    require_https          = true
+    default_provider       = "azureactivedirectory"
+
+    active_directory_v2 {
+      client_id            = azuread_application.ingest.client_id
+      tenant_auth_endpoint = "https://login.microsoftonline.com/${lower(var.tenant_id)}/v2.0"
+      allowed_audiences    = [azuread_application.ingest.client_id]
+      allowed_applications = sort(keys(local.authorized_callers))
+      allowed_identities   = sort(values(local.authorized_callers))
+    }
+
+    login {
+      token_store_enabled = false
+    }
+  }
+
   app_settings = {
     # DefaultAzureCredential needs this to select the user-assigned identity.
     AZURE_CLIENT_ID = azurerm_user_assigned_identity.func.client_id
@@ -157,6 +178,12 @@ resource "azurerm_function_app_flex_consumption" "this" {
     AzureWebJobsStorage__tableServiceUri = azurerm_storage_account.func.primary_table_endpoint
     AzureWebJobsStorage__credential      = "managedidentity"
     AzureWebJobsStorage__clientId        = azurerm_user_assigned_identity.func.client_id
+
+    INGEST_TENANT_ID          = lower(var.tenant_id)
+    INGEST_AUDIENCE           = azuread_application.ingest.client_id
+    INGEST_AUTHORIZED_CALLERS = jsonencode(local.authorized_callers)
+    INGEST_FIXTURE_ENABLED    = tostring(var.enable_synthetic_fixture)
+    INGEST_MAX_BYTES          = tostring(var.max_document_bytes)
 
     SP_SITE_HOSTNAME = var.sharepoint_hostname
     SP_SITE_PATH     = var.sharepoint_site_path
@@ -174,6 +201,8 @@ resource "azurerm_function_app_flex_consumption" "this" {
   depends_on = [
     azapi_resource.deployments,
     azurerm_role_assignment.func_storage_blob_owner,
+    azuread_application_identifier_uri.ingest,
+    azuread_app_role_assignment.ingest_caller,
   ]
 
   tags = var.tags

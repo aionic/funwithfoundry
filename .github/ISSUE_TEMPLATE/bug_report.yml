@@ -1,0 +1,17 @@
+name: Bug report
+description: Report a reproducible failure with sanitized evidence.
+body:
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction and expected behavior
+      description: Include the source commit and command. Never include tokens, state, or customer documents.
+    validations:
+      required: true
+  - type: textarea
+    id: results
+    attributes:
+      label: Actual result and environment
+      description: Include tool versions, failed stage, and whether this was mocked or live. Sanitize errors.
+    validations:
+      required: true
