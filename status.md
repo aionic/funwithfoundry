@@ -32,7 +32,11 @@ GitHub-hosted checks are separate from this accepted working-tree deployment.
   users, tasks, keys, firewall rules and locks: none.
 - The jumpbox is confirmed deallocated. The rebuilt services remain deployed and
   continue billing. All six implementation/rehearsal phases are closed; publication
-  follow-up `funwithfoundry-eei` remains open. No commit or push has been made.
+  follow-up `funwithfoundry-eei` tracks hosted checks and repository protections.
+- Published to GitHub `main` in commit `00ffc1d`, followed by workflow correction
+  `079b8bb`. The exact staged snapshot passed the local secret scan. See the
+  [GitHub Actions run](https://github.com/aionic/funwithfoundry/actions/runs/34492853229)
+  for hosted results; local and live Azure acceptance do not imply hosted CI success.
 
 The deployed identifiers and results below describe the previous environment,
 which has been removed. Do not reuse its agent principal or treat its acceptance
