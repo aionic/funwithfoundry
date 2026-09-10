@@ -1,5 +1,5 @@
 langchain-azure-ai[hosting]==1.2.9
-azure-ai-projects==2.4.0
+azure-ai-projects==2.6.0
 azure-ai-contentunderstanding==1.2.0b3
 azure-ai-agentserver-core==2.2.0b1
 azure-ai-agentserver-invocations==1.2.0b1
