@@ -25,12 +25,14 @@ jobs:
     defaults:
       run:
         shell: pwsh
-    env:
-      FWF_PYTHON: ${{ runner.temp }}/fwf-native/${{ runner.os == 'Windows' && 'Scripts/python.exe' || 'bin/python' }}
-      FWF_INGEST_PYTHON: ${{ runner.temp }}/fwf-ingestion/${{ runner.os == 'Windows' && 'Scripts/python.exe' || 'bin/python' }}
-      FWF_HELLO_PYTHON: ${{ runner.temp }}/fwf-hello/${{ runner.os == 'Windows' && 'Scripts/python.exe' || 'bin/python' }}
-      FWF_DOCS_PYTHON: ${{ runner.temp }}/fwf-docs/${{ runner.os == 'Windows' && 'Scripts/python.exe' || 'bin/python' }}
     steps:
+      - name: Resolve isolated environment paths
+        run: |
+          $layout = if ($env:RUNNER_OS -eq 'Windows') { 'Scripts/python.exe' } else { 'bin/python' }
+          $components = @{ FWF_PYTHON = 'native'; FWF_INGEST_PYTHON = 'ingestion'; FWF_HELLO_PYTHON = 'hello'; FWF_DOCS_PYTHON = 'docs' }
+          foreach ($entry in $components.GetEnumerator()) {
+            "$($entry.Key)=$env:RUNNER_TEMP/fwf-$($entry.Value)/$layout" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
       - name: Preserve repository line endings
         run: git config --global core.autocrlf false
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
