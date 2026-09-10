@@ -2,33 +2,34 @@
 
 ## Scope and evidence
 
-Source snapshot: **2026-09-09**. The component locks and runtime declarations below
-describe the current implementation. Local tests passed on actual Python 3.11.13
-and 3.13.7; this does not establish hosted or live-cloud compatibility. Rerun the
-full release gate after the latest artifact-transfer integration. Dependency pins,
-API dates and service lifecycle are different kinds of evidence.
+The component locks and runtime declarations below describe the reference baseline.
+[VALIDATION.md](VALIDATION.md) records its 2026-09-10 local, hosted CI and live rebuild
+acceptance separately. Dependency pins, API dates and service lifecycle are different
+kinds of evidence; success on that baseline does not certify every allowed version
+or a new environment. Use [TESTING.md](TESTING.md) to validate a change.
 
-The previous v5 hosted-agent smoke is historical; it does not certify the rewritten
-runtime. Phase 6 must establish the new baseline. No blanket Python 3.12+ requirement
-or cross-version support matrix is inferred from a developer workstation.
+The previous v5 hosted-agent smoke is historical. No blanket Python 3.12+ requirement
+or cross-version support matrix is inferred from a developer workstation. The
+documentation-tool updates below do not change or redeploy the accepted runtime locks.
 
 ## Runtime and package matrix
 
-| Component | Actual source setting | What remains unverified |
+| Component | Actual source setting | Validation boundary |
 | --- | --- | --- |
 | Terraform CLI | `>= 1.9.0` in [providers.tf](../terraform/providers.tf) | No exact CLI release pinned by that constraint |
-| Terraform providers | Lockfile: azurerm `4.81.0`, azapi `2.12.0`, azuread `3.9.0`, random `3.9.0`, time `0.14.1` | Fresh full deployment with the current graph; respect lockfile checksums |
-| Ingestion Function | Python `3.11`, FC1 Flex Consumption in [main.tf](../terraform/modules/ingest-function/main.tf); 24 local tests passed on `3.11.13`; remote Oryx build on `3.11.8` and trigger discovery passed | Authorized fixture invocation and cross-region acceptance |
-| Hosted agent | `python_3_13`, remote build, Responses protocol `2.0.0` in [azure.yaml](../azure.yaml); 17 local native tests passed on actual `3.13.7` | Current deterministic graph on the hosted runtime |
-| Ingestion lock | `azure-functions==1.24.0`, `azure-identity==1.25.1`, `azure-storage-blob==12.27.1`, `azure-core==1.36.0`, `requests==2.32.5`, `pyjwt==2.10.1`, `cryptography==46.0.3`, plus hashed transitives | Live remote build and authorization |
-| Native lock: SDK/hosting | `langchain-azure-ai==1.2.9`, `azure-ai-projects==2.4.0`, `azure-identity==1.25.3`, `httpx==0.28.1`, stable `pydantic==2.13.5` | Fresh hosted execution |
+| Terraform providers | Lockfile: azurerm `4.81.0`, azapi `2.12.0`, azuread `3.9.0`, random `3.9.0`, time `0.14.1` | Recorded rebuild passed; respect lockfile checksums and validate new plans |
+| Ingestion Function | Python `3.11`, FC1 Flex Consumption in [main.tf](../terraform/modules/ingest-function/main.tf); local checks on `3.11.13`; remote Oryx build on `3.11.8` | Recorded authorized fixture and cross-region acceptance passed; not arbitrary document/tenant coverage |
+| Hosted agent | `python_3_13`, remote build, Responses protocol `2.0.0` in [azure.yaml](../azure.yaml); local native checks on `3.13.7` | Recorded deterministic hosted graph passed; revalidate runtime/model changes |
+| Ingestion lock | `azure-functions==1.24.0`, `azure-identity==1.25.1`, `azure-storage-blob==12.27.1`, `azure-core==1.36.0`, `requests==2.32.5`, `pyjwt[crypto]==2.10.1`, `cryptography==46.0.3`, plus hashed transitives | Remote build and selected authorization probes passed; optional scenarios remain listed in validation |
+| Native lock: SDK/hosting | `langchain-azure-ai==1.2.9`, `azure-ai-projects==2.4.0`, `azure-identity==1.25.3`, `httpx==0.28.1`, stable `pydantic==2.13.5` | Recorded hosted execution passed; not proof for later SDK versions |
 | Native lock: orchestration | `langgraph==1.2.11`, `langchain-core==1.6.2`, `langchain-openai==1.6.1`, `langchain-mcp-adapters==0.3.2`, `mcp==1.30.0`, `openai==2.54.0` | Not a broad cross-version support matrix |
 | Responses client lock | `azure-identity==1.25.3`, `httpx==0.28.1`, plus hashed transitives; CI selects Python `3.13.7` | No independent deployed runtime pin |
 | IQ setup helper | Imports `azure.identity` and `requests`; reads shared index JSON | No dedicated runtime/dependency lock in the helper; retain the full source layout |
-| Windows jumpbox | Windows Server image uses `version = "latest"` in [main.tf](../terraform/modules/jumpbox-bastion/main.tf) | Image and installed tools are not immutable or a verified bootstrap |
-| Runner tools | Reviewed manifest: azd `1.33.0`, uv `0.8.13`, Python `3.13.7`, eight pinned extensions; azd/uv verified against official SHA manifests | Tool bundles staged for transfer; actual private bootstrap remains unproven |
+| Windows jumpbox | Windows Server image uses `version = "latest"` in [main.tf](../terraform/modules/jumpbox-bastion/main.tf) | Recorded image bootstrap passed; future images are not immutable |
+| Runner tools | Reviewed manifest: azd `1.33.0`, uv `0.8.13`, Python `3.13.7`, eight pinned extensions; official artifact verification | Private bootstrap passed in the recorded rebuild; new VMs require read-back |
 | Diagram tooling | `@mermaid-js/mermaid-cli` `11.12.0` in [.github/package.json](../.github/package.json) | Contracts approved; two 3840 x 2160 PNGs reproduced, inventoried and visually inspected; not cloud evidence |
 | Markdown tooling | `markdownlint-cli2` `0.18.1` in [.github/package.json](../.github/package.json) | Verify Node engine and resolved dependency compatibility in CI |
+| Python documentation tools | `yamllint==1.38.0`, `markdown-it-py==4.2.0` in [.github/requirements.txt](../.github/requirements.txt) | Local documentation checks use a separate environment; not deployed runtime dependencies |
 
 Provider evidence: [terraform/.terraform.lock.hcl](../terraform/.terraform.lock.hcl).
 Dependency evidence: [ingestion requirements](../src/ingest_func/requirements.txt),
@@ -74,15 +75,15 @@ The [CI workflow](../.github/workflows/repository.yml) selects Python `3.11.13` 
 ingestion and `3.13.7` for native/client environments, uv `0.8.13`, Terraform
 `1.15.8` and Node `22.16.0`. Windows runs the full release gate; Linux runs quick
 syntax and the Python runtime suites, not the Windows transport or full Terraform/
-documentation gate. These declarations are not evidence of a successful GitHub run.
-The observed local Python total is **45 passed, zero skips**: 24 ingestion, 17 native
-and 4 schema checks.
+documentation gate. Actual hosted results are linked in [VALIDATION.md](VALIDATION.md);
+declared versions alone are not evidence. Windows obtains 3.11.13 through uv because
+the pinned setup-python action has no matching Windows build.
 
 Python `3.13.7` is included as the fourth staged artifact, using the official
 Windows installer with published SHA-256 and Python Software Foundation signature
-verification. All four artifacts passed live SFTP transfer and hash verification
-before teardown. Fresh-VM installation and hosted execution remain distinct gates;
-do not infer either from successful artifact delivery or local tests.
+verification. All four artifacts, fresh-VM installation and hosted execution passed
+in the recorded rebuild. Keep these as distinct gates for another environment;
+do not infer installer or runtime success from artifact delivery alone.
 
 ## Models, APIs and data contract
 
@@ -143,3 +144,32 @@ an untrusted fork, or regenerate the provider lockfile during a routine release.
 Capture tool versions, resolved packages, source/package hashes, API/model versions
 and sanitized results in release evidence. Mark unavailable versions or quota as
 blocked rather than claiming compatibility.
+
+### Dependabot review, 2026-09-10
+
+The authenticated GitHub alerts API reported that Dependabot security alerts are
+disabled for this repository. An open version-update PR is not itself a security
+alert. No claim of zero known vulnerabilities follows from an unavailable alert
+list, and this review does not change repository security settings.
+
+| Update PR | Disposition | Reason |
+| --- | --- | --- |
+| [6](https://github.com/aionic/funwithfoundry/pull/6): markdown-it-py 4.0.0 to 4.2.0 | Applied in source | Minor documentation parser update; exercised by local-link checks |
+| [7](https://github.com/aionic/funwithfoundry/pull/7): yamllint 1.37.1 to 1.38.0 | Applied in source | Minor documentation linter update; exercised against repository YAML |
+| [8](https://github.com/aionic/funwithfoundry/pull/8): MCP adapter minimum 0.2 to 0.3.2 | Applied in source | Lock already resolves 0.3.2; no version or hash change, retrieval tests pass |
+| [9](https://github.com/aionic/funwithfoundry/pull/9): azure-ai-projects 2.4.0 to 2.6.0 | Deferred | Changes the live-validated SDK/preview-hosting combination; needs a coherent lock and API/private integration validation, not just a minor-version label |
+| PRs 1-5: setup-python, gitleaks-action, setup-node, checkout, setup-uv | Deferred | Major Actions upgrades require separate runner/runtime and workflow compatibility review |
+
+The two documentation wheels were obtained over verified HTTPS and compared with
+PyPI SHA-256 metadata after uv downloads hit a local TLS handshake failure. They
+were installed with uv in a dedicated environment using local wheels and cached
+dependencies; TLS verification and runtime locks were not weakened. Equivalent
+source changes are included in this publication; PRs were not individually merged.
+Check the publication commit's hosted results before treating updates as validated
+on GitHub runners.
+
+Deferred work is retained in the published Beads backlog: `funwithfoundry-rme`
+covers the runtime SDK and major Actions upgrades, `funwithfoundry-g5f` covers
+authorization and verification of Dependabot security alerts, and
+`funwithfoundry-48p` covers required-check protection on `main`. None of these
+deferred changes or repository settings is enabled by publishing the current work.

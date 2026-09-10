@@ -4,33 +4,20 @@
 
 Automation exists to catch mistakes cheaply, preserve deployment ordering, limit
 privilege and make failure evidence auditable. It does not turn a POC into a production
-platform or make an untested cloud path safe. This page describes the current
-implementation and verified local evidence as of 2026-09-09, not a successful GitHub
-or new accelerator Azure run. The full release gate must be rerun after the latest
-artifact-transfer integration.
+platform or make an untested cloud path safe. This page describes check coverage,
+deployment ordering and trust boundaries. See [TESTING.md](TESTING.md) for local
+setup and commands, [VALIDATION.md](VALIDATION.md) for dated acceptance and hosted
+CI evidence, and [STATUS.md](STATUS.md) for status and history.
 
 ## Local checks
 
 The current [Test-Repository.ps1](../scripts/Test-Repository.ps1) is cloud-free: it
-does not discover credentials or invoke Azure CLIs. Supply explicit uv environment
-interpreters; PATH Python is not selected implicitly. Ingestion and hosted-agent
-requirements have different Azure Identity pins and should remain isolated.
-
-The full local release-check command, after installing the reviewed test/documentation
-dependencies into those environments, is:
-
-```powershell
-pwsh -NoProfile -File .\scripts\Test-Repository.ps1 -PythonPath $NativePython -IngestionPythonPath $IngestionPython -DocumentationPythonPath $DocsPython -Terraform -Release
-```
-
-`$NativePython`, `$IngestionPython` and `$DocsPython` must be real paths from separate
-uv environments. Native checks use Python 3.13.7 and ingestion uses 3.11.13. See
-[CONTRIBUTING.md](../CONTRIBUTING.md#development-checks) for complete setup and
-[deployment.md](deployment.md#component-environments) for hash-enforced component
-installs. Documentation dependencies are in
-[.github/requirements.txt](../.github/requirements.txt) and the committed npm lockfile.
-Install the latter with `npm ci --prefix .github --no-audit --no-fund`; do not replace
-the pinned tools with an unpinned download.
+does not discover credentials or invoke Azure CLIs. Use the separate uv environments
+and explicit interpreters in [TESTING.md](TESTING.md#prepare-local-environments);
+PATH Python is not selected implicitly. Ingestion and hosted-agent requirements
+have different Azure Identity pins and must remain isolated. See the
+[contributor lock notes](../CONTRIBUTING.md#development-checks) for packaging contracts.
+Use the committed documentation dependencies and npm lockfile, not unpinned downloads.
 
 The harness parses PowerShell, checks Python syntax, runs the ingestion/retrieval/schema
 tests and PowerShell mock guards. `-Terraform` adds formatting, validation in a
@@ -45,41 +32,37 @@ branch failing. There is no broad supported-Python matrix implied by these tests
 Terraform provider/package downloads need network access; that is distinct from an
 Azure deployment or data-plane call.
 
+The root Terraform lockfile is honored read-only; the child module resolves its
+declared provider constraints independently. Mermaid rendering needs Chromium and
+its OS libraries. The no-sandbox configuration is for local/isolated CI rendering,
+never a service processing customer content. Rendering proves syntax, not design
+approval or final-image review.
+
 On Windows the harness also runs [Test-ArtifactTransfer.ps1](../tests/Test-ArtifactTransfer.ps1).
 It mocks ARM, Bastion, SFTP and Windows management operations, sandboxes guest file
 publication/cleanup, and checks installed SSH/keygen arguments locally without a
 connection. It requires the native Windows OpenSSH clients, not Azure credentials.
 See [verified bulk artifact transfer](deployment.md#verified-bulk-artifact-transfer)
-for the newly added management path and the separate live acceptance gate.
+for the management path and the separate live acceptance gate.
 
 ### Recorded local evidence
 
-The verified implementation results include 160 operational guards, 18 native
-deployment scenarios, 214 deployment assertions, and 45 Python tests with zero skips:
-24 ingestion on actual 3.11.13, 17 native on actual 3.13.7, and four schema checks.
-Terraform recursive formatting, root/module validation and three mocked auth tests
-passed. The final pre-redeployment documentation check passed for 10 YAML
-files, 17 Markdown files, 119 local links and two Mermaid contracts.
-
-The transport suite passed **514 local guard assertions**, not 514 end-to-end
-scenarios. Its scope is the narrow privileged transfer lifecycle: integrity, exact
-scope, temporary access and cleanup failures. That coverage is warranted by this
-new surface; it does not introduce a broad generic test or runtime matrix. Live
-Bastion SFTP delivery verified all four artifacts. Cleanup required an approved
-jumpbox restart and durable managed Run Command verification. Fresh-VM tool
-installation and new workload acceptance subsequently passed; see [VALIDATION.md](VALIDATION.md).
+The dated [validation record](VALIDATION.md) and [status record](STATUS.md) separate
+the completed local release gate, hosted Windows/Linux/secret-scan baseline and
+live acceptance. Use those records for results and recovery boundaries, not copied
+test totals. Local transport guards exercise integrity, exact scope, temporary
+access and cleanup failures; they are not live end-to-end scenarios. Artifact
+delivery, cleanup, fresh-VM installation and workload acceptance require distinct proof.
 
 For a documentation-only edit, use the installed linter and repository configuration:
 
 ```powershell
-& .\.github\node_modules\.bin\markdownlint-cli2.cmd --config .github/.markdownlint-cli2.jsonc README.md docs/automation.md docs/compatibility.md docs/deployment.md docs/operations.md CONTRIBUTING.md docs/ACCELERATOR-PLAN.md .azure/deployment-plan.md
+& .\.github\node_modules\.bin\markdownlint-cli2.cmd --config .github/.markdownlint-cli2.jsonc CONTRIBUTING.md docs/automation.md docs/operations.md
 ```
 
-Scoped lint is not the full release gate. The read-only subscription preflight
-returned 51 PASS, 0 WARN and 0 FAIL. Live Entra authority and the create-only
-infrastructure plans were separately checked. Function authentication and hosted
-runtime acceptance passed. The private deployment plan records PIM
-and separates current proof from its September 8 historical deployment appendix.
+Adjust the file list to the changed Markdown files. Scoped lint is not the full
+release gate, local-link validation or cloud acceptance. Follow
+[TESTING.md](TESTING.md#choose-a-validation-level) for the appropriate validation level.
 
 ### Why hooks are advisory
 
@@ -97,6 +80,10 @@ They should run quick local checks, not Azure login, tenant consent, applies or 
 statuses in branch protection/rulesets, require review of workflow/IaC/security changes,
 and restrict bypass permission. These **repository settings need administrator
 configuration and verification**; the workflow file cannot enforce them by itself.
+
+The dated [publication verification](VALIDATION.md#publication) records all three
+hosted jobs passing, but `main` was unprotected and the ruleset list was empty.
+Green CI is a baseline for that commit, not proof of enforced merge requirements.
 
 The checks run on public hosted runners with read-only repository permissions and no
 Azure login. That is appropriate for mock/static checks, not private integration.
@@ -122,8 +109,9 @@ Git hooks or independent jobs that can race each other.
 The current source requires explicit subscription scope and a reviewed tool manifest
 for private workload setup. Its resume state and native-runtime variable file are
 under the ignored azd accelerator directory; plans there remain sensitive. Source
-and manifest fingerprinting/read-back behavior have local coverage. Fresh
-infrastructure execution is underway. The four-artifact manifest records azd 1.33.0,
+and manifest fingerprinting/read-back behavior have local coverage. The dated
+rebuild and recovery evidence is in [VALIDATION.md](VALIDATION.md). The four-artifact
+manifest records azd 1.33.0,
 uv 0.8.13, the signed Python 3.13.7 installer and eight extensions, with verified
 hashes. The explicit interpreter path avoids runner Python downloads. Successful
 artifact delivery does not by itself prove installer or workload readiness.
@@ -143,7 +131,8 @@ commands and [operations.md](operations.md) for rollback and cleanup.
 
 ### OIDC and private runner trust
 
-No automatic cloud deployment is claimed by the current repository-check workflow.
+No cloud deployment workflow is provided; the repository-check workflow's manual
+dispatch runs checks only.
 Any future deployment workflow must be manual/approved and use short-lived GitHub
 OIDC federation, not a stored client secret or copied operator login cache. Bind the
 federated issuer, repository/environment subject and audience precisely; scope
@@ -183,20 +172,18 @@ model/API/toolbox/agent versions, package hashes, sanitized check outcomes and r
 IDs. Functional evaluation and cloud evaluation-service availability are separate
 results. Keep raw state, tokens and document contents out of release artifacts.
 
-The exact Mermaid contracts and final-image QA are approved and complete. Phase 6
-still requires the refreshed release gate, live Entra/runner/plan/capacity checks
-and exact teardown approval. Preserve the existing lab until that approval, then
-tear down, fully redeploy, verify idempotence and run actual Function/private/negative
-checks. Leave the rebuilt lab deployed. No new accelerator Azure write, teardown or
-redeployment is claimed.
+Use [VALIDATION.md](VALIDATION.md) and [STATUS.md](STATUS.md) for completed rehearsal
+evidence and explicitly untested scenarios. A new release or environment needs its
+own applicable checks, live authority/capacity review and workload acceptance;
+previous acceptance does not authorize writes or deletion. Teardown requires exact
+scope approval under [operations.md](operations.md#ordered-teardown), independently
+of any deployment or release approval.
 
 ## Diagram validation
 
-Authoritative files are in [docs/diagrams](diagrams). The repository and this pass
-use `@mermaid-js/mermaid-cli@11.12.0`. The user approved the exact contracts through
-askQuestions in this session. Both final Azure-icon PNGs were reproduced at
-3840 x 2160, inventoried and visually inspected, with the approved source hashes
-unchanged. The existing renderer's non-writing verification mode is:
+Authoritative files and approval records are in [docs/diagrams](diagrams). The
+repository pins `@mermaid-js/mermaid-cli@11.12.0`. The renderer's non-writing
+verification mode is:
 
 ```powershell
 node .github/scripts/render-diagrams.mjs --verify
@@ -208,21 +195,3 @@ checks source and image hashes, inventories and dimensions without overwriting i
 A changed contract needs fresh human approval; a changed image needs fresh visual
 inspection. Neither automated rendering nor Markdown lint replaces those gates.
 Diagram approval does not establish that cloud resources or runtime paths work.
-
-### Historical preview evidence
-
-Before final approval, both complete contracts rendered with Mermaid CLI `11.12.0`
-and source-selected ELK layout, exit zero. The temporary previews were inspected
-then removed. Their sizes below describe those earlier previews, not the current
-3840 x 2160 deliverables. The source hashes remain the approved hashes.
-
-| Contract | SHA-256 of exact review source | Ephemeral preview evidence |
-| --- | --- | --- |
-| Runtime | `055ECA0ACA8B27552905B41F29231B8AF64CD61226094779CF9238629774AA6E` | 111474 bytes, 3184 x 545 |
-| Topology | `DF09D439F0D4AC75799D3067DD9B3AED5F1B2EA780DAB5BA10862F8B6298DECF` | 135486 bytes, 3184 x 378 |
-
-The earlier seven-file documentation pass used installed `markdownlint-cli2` 0.18.1
-and repository settings with zero errors, parsed local links/headings with
-`markdown-it`, and passed a scoped whitespace check. That historical pass did not run
-the full repository or any cloud workflow. Use the current recorded evidence above
-and a fresh release-gate run for release decisions.

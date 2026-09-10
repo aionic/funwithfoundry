@@ -1,81 +1,131 @@
 # Deployment
 
-## Release gate
+This guide deploys a new environment from the supplied configuration, verifies the
+default fixture and explains how to resume safely. Run workstation commands from
+the repository root in PowerShell 7.3+ on Windows. The existing workflow provisions
+Azure resources and executes private data-plane work on its jumpbox; a workstation
+login alone does not make the private endpoints reachable.
 
-Current implementation status: **Core rebuild and live acceptance passed**, 2026-09-10 UTC.
-Phases 1-6 and minimal tests are approved in [ACCELERATOR-PLAN.md](ACCELERATOR-PLAN.md).
-The user approved both Mermaid contracts; their hashes are unchanged and both
-3840 x 2160 PNGs were reproduced, inventoried and visually inspected.
+Use [architecture.md](architecture.md) to understand what you are deploying and
+[TESTING.md](TESTING.md) for local setup. Dated results and recovery history are in
+[VALIDATION.md](VALIDATION.md) and [STATUS.md](STATUS.md), not prerequisites for a new
+user. The recorded rebuild passed with operator recovery; it does not certify
+unattended deployment in another tenant. No fixed completion time is promised.
 
-The [validation report](VALIDATION.md) records current live results and recovery
-steps. It is not a claim of unattended or production-ready deployment. For another
-environment, rerun local checks and verify its own tenant authority, capacity,
-policy, tool bootstrap and reviewed plans. Preflight alone is not deployment proof.
-
-**Preserve the existing lab until the user approves its exact teardown targets.**
-The approved Phase 6 sequence then tears down and fully redeploys that lab, not a
-duplicate environment, and leaves the rebuilt lab deployed. Preserve the repository,
-unrelated resources and secure state backups. That exact-scope teardown and rebuild
-completed for the recorded rehearsal; never apply its approval to another environment.
+**A fresh deployment does not start with teardown.** If replacing an existing lab,
+review its exact targets, back up state and use the separate
+[teardown procedure](operations.md#ordered-teardown) only after explicit approval.
 
 ## Short path
 
-1. Read [SECURITY.md](../SECURITY.md) and [compatibility.md](compatibility.md); obtain
-   the ARM and tenant permissions below, with sufficient PIM duration for teardown.
-2. Configure [terraform/terraform.tfvars.example](../terraform/terraform.tfvars.example)
-   as a private local input file. Never overwrite existing lab inputs or state.
-3. Rerun the [local release gate](automation.md#local-checks). The diagram contracts
-   and final-image QA are complete; changes to their semantics require new approval.
-4. After all gates, inventory and back up the existing state, approve exact resource
-   IDs, and follow [operations.md](operations.md#ordered-teardown). Confirm removal.
-5. After resolving private bootstrap and live identity/plan gates, run `Preflight`,
-   `Infrastructure`, `Workload`, then `Verify` using the commands below.
-6. Run the default Function fixture demo and the negative cases below. Repeat the
-   deployment workflow and check for unintended resource, role or toolbox duplication.
-7. Keep the rebuilt lab deployed after acceptance; deallocate only the jumpbox unless
-   a second teardown is explicitly requested. Review the continuing cost first.
+1. Review cost, capacity, [security](../SECURITY.md), the [toolchain](compatibility.md)
+   and the separate ARM/Entra permissions below.
+2. Prepare a fresh checkout, private Terraform input and protected persistent state.
+3. Install isolated local environments and pass the [release gate](TESTING.md#run-the-release-gate).
+4. Authenticate the workstation and generate/review the verified runner-tool manifest.
+5. Execute `Preflight`, `Infrastructure`, `Workload`, then `Verify`, reviewing plans
+   and stopping at the first failure or unknown outcome.
+6. Run the fixture questions and record evidence. Add SharePoint only after site consent.
+7. Choose whether to leave resources running, pause only the VM, or perform a
+   separately approved teardown. Firewalls and other services continue billing when paused.
 
-The [Invoke-Accelerator.ps1](../scripts/Invoke-Accelerator.ps1) public interface is
-implemented. These commands match its parameter declarations; they are instructions
-for approved execution, not evidence of a successful cloud run:
+## Configure the environment
+
+For a new clone, create the private input file once:
+
+```powershell
+$ErrorActionPreference = 'Stop'
+$PSNativeCommandUseErrorActionPreference = $true
+if (Test-Path .\terraform\terraform.tfvars) { throw 'Existing input file: review rather than overwrite.' }
+Copy-Item .\terraform\terraform.tfvars.example .\terraform\terraform.tfvars
+```
+
+Edit [the copied template](../terraform/terraform.tfvars.example) using these inputs:
+
+| Input | First-deployment guidance |
+| --- | --- |
+| `subscription_id` | Required target GUID; must match the CLI context and explicit script argument |
+| `prefix` | Use a unique 2-8 character lowercase alphanumeric prefix; default is `fwf` |
+| `primary_region`, `secondary_region` | Baseline is `centralus` and `southcentralus`; alternative regions require capability, quota and routing review |
+| `jumpbox_size`, `jumpbox_admin_username` | Defaults are `Standard_D4s_v5` and `fwfadmin`; check capacity and organizational policy |
+| `my_object_id` | Empty uses the Terraform caller; set only to the reviewed operator object ID |
+| `native_agent_principal_id` | Leave empty initially; the staged workflow discovers the runtime instance identity after deployment and writes a separate RBAC variable file |
+| `tags` | Add owner/environment/cost context consistent with your governance |
+| `sharepoint_hostname`, `sharepoint_site_path`, `sharepoint_file_path` | Optional; leave unconfigured for the fixture-only demo |
+
+Never paste a runtime principal from the status history. The initial plan explicitly
+uses an empty runtime principal; later staged plans pass the verified generated
+variable file. A blueprint principal is not the runtime identity.
+
+`EnvironmentName` labels azd and `.azure/<environment>/accelerator` progress;
+**it does not create a separate Terraform backend/workspace**. Terraform uses the
+selected `TerraformDir` and its state. For independent labs, use separate checkouts,
+private inputs, protected state and unique resource naming. Do not assume different
+names isolate address space if you connect the environments later.
+
+When changing regions or VM size in tfvars, pass matching `-PrimaryRegion`,
+`-SecondaryRegion` and `-JumpboxSize` values to the accelerator for its preflight.
+Those script arguments do not rewrite Terraform variables. Model/SKU defaults,
+subnet addressing and service settings have additional module-level constraints;
+see the [architecture configuration map](architecture.md#configuration-versus-implementation).
+
+## Prepare and run
+
+Authenticate the workstation to the approved tenant/subscription using Azure CLI
+and complete the independent tenant-permission checks below. The runner performs
+its own managed-identity azd login; never transfer your login cache.
+
+```powershell
+$SubscriptionId = '<your-subscription-guid>'
+$EnvironmentName = 'funwithfoundry-dev'
+az login
+az account set --subscription $SubscriptionId
+az account show --output table
+pwsh -NoProfile -File .\scripts\Get-RunnerToolManifest.ps1 -OutputPath .\.azure\runner-tools.json -PythonVersion 3.13.7
+```
+
+The [manifest generator](../scripts/Get-RunnerToolManifest.ps1) requires Windows,
+Node.js and the local tools in the compatibility matrix. It downloads and verifies
+four artifact categories: azd, uv, a PSF-signed Python installer and eight pinned
+Foundry extensions. Review the manifest and adjacent `runner-tool-cache`; keep them
+together outside Git. Generation does not install the runner or deploy resources.
+Reuse an approved manifest rather than silently refreshing it midway through a run.
+
+After local checks, permission review and manifest review, execute one stage at a time:
 
 ```powershell
 $ToolManifestPath = (Resolve-Path .\.azure\runner-tools.json).Path
-pwsh -NoProfile -File .\scripts\Invoke-Accelerator.ps1 -SubscriptionId $SubscriptionId -Stage Preflight
-pwsh -NoProfile -File .\scripts\Invoke-Accelerator.ps1 -SubscriptionId $SubscriptionId -Stage Infrastructure
-pwsh -NoProfile -File .\scripts\Invoke-Accelerator.ps1 -SubscriptionId $SubscriptionId -Stage Workload -Resume -ToolManifestPath $ToolManifestPath
-pwsh -NoProfile -File .\scripts\Invoke-Accelerator.ps1 -SubscriptionId $SubscriptionId -Stage Verify -Resume -ToolManifestPath $ToolManifestPath
+$Deployment = @{
+    SubscriptionId = $SubscriptionId
+    EnvironmentName = $EnvironmentName
+    TerraformDir = (Resolve-Path .\terraform).Path
+    ToolManifestPath = $ToolManifestPath
+    PrimaryRegion = 'centralus'
+    SecondaryRegion = 'southcentralus'
+    JumpboxSize = 'Standard_D4s_v5'
+}
+.\scripts\Invoke-Accelerator.ps1 @Deployment -Stage Preflight
+.\scripts\Invoke-Accelerator.ps1 @Deployment -Stage Infrastructure
+.\scripts\Invoke-Accelerator.ps1 @Deployment -Stage Workload -Resume
+.\scripts\Invoke-Accelerator.ps1 @Deployment -Stage Verify -Resume
 ```
 
-`-Stage` accepts `Preflight`, `Infrastructure`, `Workload`, `Verify` and defaults to
-`Preflight`. `-EnvironmentName` defaults to `funwithfoundry-dev`; use the same reviewed
-name for every stage. `-TerraformDir` selects the existing state directory. `-Resume`
-uses fingerprint-matched progress, not blind retries. `-Confirm` and `-WhatIf` are
-ShouldProcess common parameters. `Preflight` queries Azure; it is not a local test.
+Stop on failure and inspect state before resuming. These are approved execution
+instructions, not proof of a successful run. `-ListStages` and `-WhatIf` support
+local inspection without cloud calls; `-WhatIf` is not a Terraform plan or capacity
+check. Actual `Preflight` reads Azure. Plans have explicit approval and hash checks.
+The entrypoint has no teardown stage and does not run `azd provision`.
 
-After an approved teardown, securely archive the old accelerator stage evidence
-before starting this sequence. Run the new lab's `Preflight` and `Infrastructure`
-without `-Resume`; missing or changed account identity invalidates the old completion
-records. Use resume only for the same deployment identity and reviewed fingerprint.
-
-`$SubscriptionId` must be the reviewed existing lab subscription, not a new scope.
-`$ToolManifestPath` points to the reviewed local manifest with azd `1.33.0`, uv
-`0.8.13`, official SHA verification, Python `3.13.7`, and eight pinned extensions.
-The tool bundles are staged in its adjacent cache for transfer, not proven installed
-on the private runner. To prepare a new manifest, use
-[Get-RunnerToolManifest.ps1](../scripts/Get-RunnerToolManifest.ps1) with `-OutputPath`
-and `-PythonVersion`. It downloads and verifies local artifacts; it does not deploy
-or validate Python readiness. Review newly resolved artifacts before replacing an
-approved manifest. Do not invent hashes or silently refresh versions during release.
-The source exposes `-ListStages` and `-WhatIf` for local inspection. It does not
-perform teardown: the separately confirmed cleanup comes first. Planner deployment
-and model must resolve from current outputs or explicit reviewed parameters.
+Keep the same environment, state directory and manifest throughout. `-Resume` skips
+only fingerprint-matched completed steps, not arbitrary failed creates. After an
+approved teardown, securely archive old progress evidence and start fresh without
+reusing completion markers. Preserve state backups separately from progress records.
 
 ## Prerequisites
 
 | Area | Requirement |
 | --- | --- |
-| Workstation | PowerShell 7, Git, Terraform satisfying the committed constraint, Azure CLI, Azure Developer CLI with the required Foundry extension commands, and uv |
+| Workstation | Windows, PowerShell 7.3+, Git, Terraform satisfying the committed constraint, Azure CLI with Bastion extension, azd, uv, Node.js/npm and native Windows `ssh`, `sftp`, `ssh-keygen` |
 | Python | Separate component environments matching declared runtimes; see the matrix, not a blanket Python minimum |
 | Azure | Correct tenant/subscription, registered resource providers, regional policy and model/VM/network quotas validated before spend |
 | ARM | Scoped resource creation, network and private-link approval, role assignment and purge permissions; PIM where required |
@@ -87,8 +137,8 @@ and model must resolve from current outputs or explicit reviewed parameters.
 Use the organization's PIM process, not a personal elevation script. An ARM Owner
 activation does **not** authorize Entra application registration, Graph app-role
 assignment or SharePoint consent. Do not give steady-state CI tenant-wide rights just
-because an initial bootstrap needs them. Live tenant authority and the new Function's
-Entra authentication are still unverified. Recheck PIM immediately before execution;
+because an initial bootstrap needs them. Verify tenant authority and Function
+authentication in your own environment. Recheck PIM immediately before execution;
 a recorded expiration is not continuing authorization.
 
 ### Ingestion identity
@@ -185,8 +235,8 @@ An Oryx remote build uses its own platform runtime and requirements; installing
 packages on the jumpbox does not install them in the Function or hosted agent.
 
 The staged implementation includes reviewed-manifest bootstrap, source-transfer
-hashes and managed-identity azd login. This is not proof of successful bootstrap on
-the actual private VM. Its private PowerShell
+hashes and managed-identity azd login. These passed the recorded rebuild, but each
+new private VM needs its own tool and identity verification. Its private PowerShell
 [Initialize-KnowledgeBase.ps1](../scripts/Initialize-KnowledgeBase.ps1) reads the same
 canonical schema as the Python helper; use the staged initializer, not two divergent
 index definitions. Verify every installer and extension path before live acceptance.
@@ -195,8 +245,8 @@ The verified bundle carries four artifacts: azd, uv, the official Python `3.13.7
 Windows installer and the eight-extension bundle. Installer SHA-256 values and
 Microsoft/PSF signatures are checked. Python is installed at an explicit runner
 path; verification uses that interpreter with `--no-python-downloads`.
-All four artifacts were transferred and hash-verified during the pre-rebuild
-rehearsal. Fresh-VM installation remains a separate acceptance check. Workload
+All four artifacts were transferred and hash-verified during the recorded rebuild,
+and fresh-VM installation passed. Keep those checks separate in your own run. Workload
 packages still need reachable PyPI or a prepared wheelhouse; do not widen firewall
 rules to make installation pass.
 
@@ -221,7 +271,7 @@ No Terraform, NSG, public-access or permanent infrastructure change is required.
 Before setup, ARM read-back must match the output-derived VM/Bastion IDs and the
 exact `AzureBastionSubnet`; its live private IPv4 CIDR scopes the Windows firewall.
 
-The implemented management flow, requiring approved live validation, is:
+The implemented management flow is:
 
 1. Authenticated ARM Run Command creates an expiring local administrator, an isolated
    SSH config and keys, a SYSTEM listener task, and a one-hour cleanup task. Existing
@@ -280,9 +330,10 @@ Local-only inspection and focused tests:
 The 514 local guard assertions cover scope, integrity, ARM envelopes, SSH options,
 guest publication/cleanup, credential ACLs, idempotence and failure cleanup. They
 are assertions over a narrow privileged transport surface, not 514 live scenarios.
-The pre-rebuild SFTP rehearsal verified all four artifacts (133,431,295 bytes) and
-completed cleanup after an approved restart. Fresh-image servicing, installation
-and the complete rebuilt workload still require separate acceptance.
+The recorded rebuild verified all four artifacts and cleanup after an approved
+restart, followed by tool installation and workload acceptance. On a new image,
+repeat servicing, installation, cleanup and workload checks rather than assuming
+one successful transfer proves them all.
 
 ### Component environments
 
@@ -308,13 +359,45 @@ Use a separate documentation environment as shown in [CONTRIBUTING.md](../CONTRI
 The optional Python IQ helper has no dedicated lock; the staged PowerShell initializer
 is the default. Keep the full checkout for either initializer's shared index schema.
 
-[Deploy-IngestFunction.ps1](../scripts/Deploy-IngestFunction.ps1) replaces packaged
-requirements with `--require-hashes` and `-r requirements.lock`. Native source staging
-does the same before remote build. The original direct requirements remain resolver
+[Deploy-IngestFunction.ps1](../scripts/Deploy-IngestFunction.ps1) copies the complete
+hashed Function lock into packaged requirements for the Oryx build. Native source
+staging uses `--require-hashes` and `-r requirements.lock` before remote build.
+Both preserve pinned versions and hashes. The original direct requirements remain resolver
 inputs, not the deployment install contract. Installing packages on the runner does
 not install them in the remote Function or hosted runtime.
 
 ## Complete demo
+
+The default `Verify` stage is the simplest end-to-end demo: it prepares the locked
+client environment on the runner, invokes the authorization/ingestion probes and
+calls [Invoke-EndToEnd.ps1](../scripts/jumpbox/Invoke-EndToEnd.ps1) with the generated
+manifest. Do not manually rediscover those inputs just to rerun the standard checks.
+Read [resume guidance](#resume-and-release) first: successful fingerprint-matched
+steps can be skipped, so a skipped step is not a fresh live test.
+
+For an additional interactive question after successful `Verify`, use an approved
+session **on the jumpbox**. Get the exact transferred source path from the
+`Workload.Transfer` output in the protected workstation accelerator state; do not
+select an arbitrary old fingerprint directory. Substitute that path below. The
+staged manifest contains deployment context, not bearer tokens:
+
+```powershell
+$RunnerSource = '<exact Workload.Transfer source path on this jumpbox>'
+$EnvironmentName = 'funwithfoundry-dev'
+Set-Location -LiteralPath $RunnerSource
+$Manifest = Get-Content .\deployment-manifest.json -Raw | ConvertFrom-Json
+if ($Manifest.environment -ne $EnvironmentName) { throw 'Runner environment mismatch' }
+$ClientPython = "C:\ProgramData\FunWithFoundry\$EnvironmentName\verification-venv\Scripts\python.exe"
+if (-not (Test-Path $ClientPython)) { throw 'Complete Verify to prepare the locked client environment' }
+& $ClientPython .\src\hello_world\ask_agent.py --project-endpoint $Manifest.project_endpoint --search-tool-name $Manifest.search_connection --model $Manifest.agent_model --question 'When is the fictional launch date of Project Cedar?'
+if ($LASTEXITCODE -ne 0) { throw 'Private client validation failed' }
+```
+
+The staged workspace has the script directory and shared source it needs. Its
+identity must still be authorized. Bastion SFTP/Run Command bootstrap does not
+certify interactive RDP in every environment; arrange approved operator access
+before using this interactive example. The generic `Invoke-JumpboxScript` wrapper
+does not forward the mandatory parameters of the probes below.
 
 Run only after approved deployment, from the private runner. Resolve the Function
 hostname and **ingestion API** client ID from Terraform outputs on the workstation;
@@ -331,7 +414,7 @@ and a reviewed checkout is present on the runner. Do not call the parameterized
 script through a wrapper that cannot forward its mandatory parameters.
 
 The default request is `{"mode":"fixture","fixtureId":"accelerator-v1"}`.
-Enable the constrained fixture setting for the demo. The fixture is generated in
+The Function module enables the constrained fixture by default. The fixture is generated in
 the **SCUS Function**, then follows the same staging, `analyzeBinary`, extraction,
 provenance and Search indexing path as SharePoint. A successful response must say
 `indexed` and include a request ID, document ID and content hash. The rerun must
@@ -406,5 +489,6 @@ stage outcomes, sanitized request IDs, negative-case results and known blockers.
 Report cloud evaluation-service failures separately from functional checks.
 The legacy v5 smoke is historical only. See
 [recorded local evidence](automation.md#recorded-local-evidence) for the current
-baseline. The private local deployment plan retains September 8 deployment evidence
-in a separate historical appendix. No new accelerator cloud run is claimed here.
+baseline and [VALIDATION.md](VALIDATION.md) for the recorded rebuilt environment.
+Documentation or dependency updates do not redeploy that environment; record a new
+live acceptance result only after executing the applicable checks there.

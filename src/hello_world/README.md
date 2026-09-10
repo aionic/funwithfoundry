@@ -33,14 +33,31 @@ prove answer correctness. Do not use generated answers as authorization for down
 
 ## Local Tests And Client
 
-Use the existing project virtual environment; never install globally:
+For cloud-free tests, follow [the testing guide](../../docs/TESTING.md) to prepare
+isolated locked environments and set the explicit interpreter paths:
 
 ```powershell
-uv pip install --python .\.venv\Scripts\python.exe -r .\src\foundry_native_agent\requirements.txt
-& .\.venv\Scripts\python.exe -m unittest discover -s tests -p test_retrieval.py -v
-uv pip install --python .\.venv\Scripts\python.exe -r .\src\hello_world\requirements.txt
-& .\.venv\Scripts\python.exe .\src\hello_world\ask_agent.py --project-endpoint $env:FOUNDRY_PROJECT_ENDPOINT --search-tool-name $env:SEARCH_TOOL_NAME --question "Your full question"
+& $env:FWF_PYTHON .github/scripts/run-python-checks.py retrieval --release
 ```
+
+For a live question, use a caller with private DNS/routes and an authorized identity.
+See [the staged jumpbox example](../../docs/deployment.md#complete-demo) for values
+from the actual deployment manifest. In a separate approved private checkout, create
+a dedicated client environment using uv and
+[the client lock](requirements.lock), then populate the current project endpoint
+and exact toolbox function name before invoking:
+
+```powershell
+uv venv --python 3.13.7 .\.venv-client
+$ClientPython = (Resolve-Path .\.venv-client\Scripts\python.exe).Path
+uv pip sync --python $ClientPython --require-hashes -r .\src\hello_world\requirements.lock
+& $ClientPython .\src\hello_world\ask_agent.py --project-endpoint $env:FOUNDRY_PROJECT_ENDPOINT --search-tool-name $env:SEARCH_TOOL_NAME --question 'Your full question'
+```
+
+Run commands from the repository root; keep environments outside the deployed source
+directories. The network must permit the reviewed package/interpreter sources or use
+approved offline artifacts. Never install globally, copy a login cache or open the
+project publicly to run the client. Local test setup does not grant private access.
 
 The client requires an explicit `--search-tool-name`, defaults to model `gpt-4o`, and accepts
 `--timeout` in seconds (default 900, maximum 900). It requires a completed response, IQ then the
@@ -56,11 +73,13 @@ a skip is not runtime or hosting validation. All tests use mocks and make no Azu
 Redeploy the permitted runtime source and dependencies using the existing hosting configuration.
 No hosting/protocol change is required. Add `SEARCH_TOOL_NAME` to the service environment when
 the fallback service name is not the toolbox function name; optionally expose the timeout.
-The current service environment already supplies the other required variables. These deployment
-files were intentionally not edited in this slice.
+The current service environment already supplies the other required variables. Use the
+[staged deployment workflow](../../docs/deployment.md), with its plan and version checks,
+for reviewed changes; a source edit does not update the running agent.
 
-The root `.agentignore` excludes `.foundry`, evaluation configuration/data, fixtures, tests,
+The hosted source's `.agentignore` excludes `.foundry`, evaluation configuration/data, fixtures, tests,
 datasets, benchmarks, results, and coverage artifacts. Inspect the actual deployment archive
-before publishing; do not ship benchmark material into the runtime image. Runtime dependencies
-use pinned integration packages plus bounded framework ranges, not a fully resolved lockfile.
-Resolve and test the full set before deployment when package downloads are available.
+before publishing; do not ship benchmark material into the runtime image. Direct requirements
+are resolver inputs; the [native lock](../foundry_native_agent/requirements.lock) and
+client lock pin the full resolved dependency sets and hashes. Preserve both during
+review and run the affected tests before any approved redeployment.

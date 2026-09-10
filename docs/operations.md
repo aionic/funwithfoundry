@@ -4,25 +4,19 @@
 
 Use `historical`, `source-verified`, `locally-validated`, `live-verified`, `blocked`
 and `not_tested` precisely. Source inspection describes intended behavior; it is not
-runtime proof. Current evidence and remaining gates are in
-[automation.md](automation.md#recorded-local-evidence), with
+runtime proof. Dated evidence and remaining gates are in
+[VALIDATION.md](VALIDATION.md) and [STATUS.md](STATUS.md), with
 architectural context in [architecture.md](architecture.md#evidence-status).
 
-As of 2026-09-09, the full local release gate passed, and both final diagrams are
-approved, reproduced and visually inspected. The old lab was fully removed and
-the fresh infrastructure deployment is underway. Private SFTP delivery verified
-all four artifact hashes; cleanup was confirmed after an approved jumpbox restart.
-Fresh-VM installation and the Entra-authorized Function/native runtime still need
-live acceptance. See [status.md](../status.md) for the current checkpoint.
+The recorded rebuild passed private bootstrap, Function ingestion and native
+runtime acceptance. Dated results, recovery steps and hosted CI evidence live in
+[STATUS.md](STATUS.md) and [VALIDATION.md](VALIDATION.md). Those results describe
+that deployment, not readiness of another checkout or environment.
 
-Fresh subscription preflight returned 51 PASS, 0 WARN and 0 FAIL. Live Entra
-administrative authority was checked separately. Recheck time-bound ARM PIM and
-tenant authority before each long execution window; preflight alone proves neither.
-
-The previous v5 Responses smoke and earlier infrastructure/DNS checks are historical
-lab observations. They do not prove the rewritten deterministic runtime, Entra API
-authorization, actual SCUS Function indexing or fresh-checkout bootstrap. Do not
-carry those pass counts into a new release report.
+Recheck time-bound ARM PIM and tenant authority before each long execution window;
+subscription preflight alone proves neither. Keep historical deployment results
+in the [status record](STATUS.md), separate from a new release's evidence. Use
+[TESTING.md](TESTING.md) for local validation and live-acceptance boundaries.
 
 ## Troubleshooting
 
@@ -70,12 +64,13 @@ Search deletion do not necessarily delete agent state or diagnostic copies.
 ## Ordered teardown
 
 **Destructive and approval-gated. Preserve the existing lab until the user approves
-the exact teardown targets.** Phase approval alone does not authorize deletion.
-The approved Phase 6 sequence removes that lab, then fully rebuilds it in the same
-scope and leaves it deployed. Keep the repository and unrelated resources. Never
-delete by a broad name prefix or purge all soft-deleted accounts in a subscription.
+the exact teardown targets.** Deployment, release or prior rehearsal approval alone
+does not authorize deletion. A subsequent rebuild requires its own approved scope;
+it is not an automatic consequence of teardown. Keep the repository and unrelated
+resources. Never delete by a broad name prefix or purge all soft-deleted accounts
+in a subscription.
 
-1. Resolve the exact subscription, three resource-group IDs, account IDs/locations
+1. Resolve the exact subscription, all managed resource-group IDs, account IDs/locations
    and project capability-host ID from the existing Terraform state/outputs. Check
    the active subscription matches. Back up state and inputs on encrypted restricted
    storage outside Git. Inventory any unexpected resources and stop on scope mismatch.
@@ -84,7 +79,7 @@ delete by a broad name prefix or purge all soft-deleted accounts in a subscripti
    for inspecting the full scope and AzureAD objects managed by Terraform.
 3. Delete the project capability host first. The account capability host is a
    platform-renamed singleton, not a separately addressable Terraform destroy target.
-4. Delete the two exact Foundry accounts. Wait with a deadline for deletion to settle.
+4. Delete the exact approved Foundry accounts. Wait with a deadline for deletion to settle.
    Historical cleanup took roughly 15-20 minutes to release injected networking;
    timing is not a service guarantee.
 5. Match each soft-deleted account by its exact deleted-resource ID, subscription,
@@ -103,8 +98,8 @@ pwsh -NoProfile -File .\scripts\Stop-Lab.ps1 -Mode Teardown
 ```
 
 [Stop-Lab.ps1](../scripts/Stop-Lab.ps1) implements the ordered workflow and scoped
-checks. The first live teardown completed with reviewed recovery plans after
-transient connection/authorization failures; it was not one uninterrupted script run.
+checks. See [VALIDATION.md](VALIDATION.md#recovery-boundaries) for dated recovery
+evidence; a previous teardown does not prove an uninterrupted run in another environment.
 The public parameters are `-Mode` (`Pause` or `Teardown`), `-TerraformDir` and
 `-TimeoutMinutes` (default 30). It has no subscription-selection parameter; verify
 the active subscription against the retained state before the confirmation prompt.
@@ -118,10 +113,11 @@ and role assignments are removed by the AzureAD provider; ARM resource-group del
 alone is not tenant-object cleanup. Retention/soft-delete policies may retain data
 or names even after resource-group removal.
 
-After teardown, archive the old accelerator stage evidence securely. Start the
-rebuilt lab's `Preflight` and `Infrastructure` without `-Resume`; a missing or changed
-account identity cannot safely reuse the previous lab's completion records. Follow
-[deployment.md](deployment.md#short-path) for subsequent stages and verification.
+After teardown, archive the old accelerator stage evidence securely. If a rebuild
+is separately approved, start its `Preflight` and `Infrastructure` without `-Resume`;
+a missing or changed account identity cannot safely reuse the previous lab's
+completion records. Follow [deployment.md](deployment.md#short-path) for subsequent
+stages and verification.
 
 ## Cost modes
 
@@ -134,8 +130,8 @@ account identity cannot safely reuse the previous lab's completion records. Foll
 VM deallocation is not firewall shutdown or a zero-cost pause. No supported firewalls-only
 pause/resume workflow is promised here. Obtain a dated Azure pricing estimate and
 budget alerts for actual SKUs/region/usage; do not reuse an old monthly dollar figure.
-After accepted Phase 6 rebuild, leave the lab deployed and deallocate the jumpbox
-unless the operator explicitly requests a second teardown.
+Choose the post-acceptance cost mode with the operator. A previous teardown or
+rebuild approval does not authorize another deletion.
 
 ## Observability and capacity
 
@@ -162,8 +158,9 @@ The reviewed manifest contains azd 1.33.0, uv 0.8.13 and the signed Python 3.13.
 installer, plus eight extensions in one bundle. Those four verified artifacts use
 the implemented Bastion private-tunnel flow described in
 [deployment.md](deployment.md#verified-bulk-artifact-transfer). Local guard counts
-are not live scenario counts. The pre-rebuild SFTP delivery and artifact hashes
-passed; fresh-image servicing and installation require their own acceptance.
+are not live scenario counts. See [VALIDATION.md](VALIDATION.md) for dated transfer,
+cleanup and fresh-VM installation results. Successful delivery does not by itself
+prove installation or workload readiness on another image.
 
 On an interrupted transfer, use the exact transfer ID's protected recovery state
 and owned cleanup script through approved Run Command. Do not delete the active

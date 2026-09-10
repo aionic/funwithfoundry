@@ -4,94 +4,24 @@ Contributions are welcome through GitHub issues and pull requests.
 
 ## Development checks
 
-Use PowerShell 7, uv, and an explicitly selected Python interpreter. The runner never uses an
-unconfigured `python` from PATH. From the repository root, create separate native, Function,
-client and documentation environments. Keep these outside packaged source directories:
+Use [docs/TESTING.md](docs/TESTING.md) for canonical local setup, isolated uv
+environments, focused checks and the full cloud-free release gate. Local checks
+do not authorize Azure writes or certify a remote build or private-runner bootstrap.
 
-```powershell
-$PSNativeCommandUseErrorActionPreference = $true
-uv venv --python 3.13.7 "$env:TEMP\fwf-native"
-uv venv --python 3.11.13 "$env:TEMP\fwf-ingestion"
-uv venv --python 3.13.7 "$env:TEMP\fwf-hello"
-uv venv --python 3.13.7 "$env:TEMP\fwf-docs"
-$env:FWF_PYTHON = "$env:TEMP\fwf-native\Scripts\python.exe"
-$env:FWF_INGEST_PYTHON = "$env:TEMP\fwf-ingestion\Scripts\python.exe"
-$env:FWF_HELLO_PYTHON = "$env:TEMP\fwf-hello\Scripts\python.exe"
-$env:FWF_DOCS_PYTHON = "$env:TEMP\fwf-docs\Scripts\python.exe"
-uv pip install --python $env:FWF_PYTHON --require-hashes -r src/foundry_native_agent/requirements.lock
-uv pip install --python $env:FWF_INGEST_PYTHON --require-hashes -r src/ingest_func/requirements.lock
-uv pip install --python $env:FWF_HELLO_PYTHON --require-hashes -r src/hello_world/requirements.lock
-uv pip install --python $env:FWF_DOCS_PYTHON -r .github/requirements.txt
-uv pip check --python $env:FWF_PYTHON
-uv pip check --python $env:FWF_INGEST_PYTHON
-uv pip check --python $env:FWF_HELLO_PYTHON
-uv pip check --python $env:FWF_DOCS_PYTHON
-npm ci --prefix .github --no-audit --no-fund
-```
+Keep the Function, native agent and client dependency sets separate. The Function
+pins `azure-identity==1.25.1`; native and client pin `1.25.3`. Direct requirements are
+resolver inputs; component `requirements.lock` files pin transitives and hashes.
+CI syncs the complete locks with `uv pip sync --require-hashes`, including dependencies
+mocked by tests. No `uv.lock` is required for these pip-compatible locks. Regenerate
+and review the relevant lock when requirements change; a manifest-only Dependabot
+update is incomplete. Retain required extras, including the Function's `PyJWT[crypto]`.
 
-Run the same cloud-free release command used by Windows CI:
-
-```powershell
-pwsh -NoProfile -File .\scripts\Test-Repository.ps1 -Terraform -Release
-```
-
-Alternatively supply `-PythonPath <native-python>`, `-IngestionPythonPath <function-python>`
-and `-DocumentationPythonPath <docs-python>`.
-An activated virtual environment is also accepted. Without a separate ingestion interpreter,
-both suites use the selected interpreter, which is useful for limited local development but
-does not validate the two distinct runtime dependency sets.
-
-The Function pins `azure-identity==1.25.1`; native agent and client pin `1.25.3`. Do not merge
-those manifests or override either pin just to install tests. CI installs the complete Function,
-native and client locks, including dependencies mocked by some tests. Direct requirements
-are resolver inputs; the three component `requirements.lock` files pin transitives and hashes.
-CI uses `uv pip sync --require-hashes` for clean environments. No `uv.lock` is required for
-these pip-compatible locks. Regenerate and review the relevant lock when changing requirements;
-Dependabot changes to pip manifests alone are not a complete dependency update.
-
-The native lock keeps stable Pydantic 2.13.5 and the explicitly required Azure preview
-dependencies listed in [compatibility.md](docs/compatibility.md). Do not resolve the whole
-environment with unrestricted prereleases. Function packaging and native staging both install
-their locks through packaged `--require-hashes` / `-r requirements.lock` requirements.
-Local setup success does not prove the remote build or private-runner Python bootstrap.
-
-### What the command checks
-
-- Parses all tracked PowerShell scripts/modules/data files plus new nonignored files, including tests.
-- Compiles all tracked/new Python sources without executing application entrypoints.
-- Runs standard-library unittest suites: 24 ingestion, 17 retrieval and 4 schema checks.
-    The verified local total is 45 with zero skips, using actual Python 3.11.13 for ingestion
-    and 3.13.7 for native tests. Four retrieval tests require LangGraph. Missing imports fail normally;
-    local skips remain visible, and `-Release` makes any skip a failure. Zero discovered tests fail.
-- Runs 156 operational assertions, four native deployment scenarios and 56 deployment guards.
-- On Windows, runs 223 artifact-transfer guard assertions using local mocks and native Windows
-    OpenSSH clients. These cover one narrow privileged transport lifecycle, not 223 live scenarios.
-    No Azure credentials or Bastion connection are used. Live transfer/cleanup proof is separate.
-- With `-Terraform`, checks root formatting recursively, initializes without a backend and
-    validates root/module configuration in a disposable copy, then runs only the existing mocked
-    ingestion auth tests (three passed). No local state, plans, tfvars, Azure login, apply, or refresh is used.
-    Provider downloads need registry access. The root lockfile is honored read-only; the child
-    module has no committed lockfile and resolves its declared provider constraints independently.
-- Checks YAML with yamllint, basic Markdown structure, local file links, and temporary Mermaid
-    renders using the npm lockfile. External URL availability and heading fragments are not checked.
-    Render success is syntax evidence, not architecture approval or final diagram publication.
-    The two current final contracts are already approved, with reproduced and inspected PNGs;
-    do not automatically approve changed sources or refresh visual-inspection records.
-
-Without `-Release`, documentation defaults to `Auto`: missing tools produce an explicit warning.
-Use `-Documentation Required` to fail on missing tools or `-Documentation Skip` to opt out locally.
-`-Release` requires documentation and rejects `-Quick` or `-Documentation Skip`. Terraform remains
-an explicit flag; use **both** `-Terraform -Release` for the complete CI command. Missing tools,
-nonzero subprocess exits, parse failures, and failed tests stop the run. No dependency is installed
-by the runner itself. Mermaid needs Chromium and its OS libraries; npm installation downloads
-the pinned Puppeteer browser. Its no-sandbox configuration is only for local/isolated CI rendering,
-never a service processing customer content.
-
-The full release gate must be rerun after the latest artifact-transfer integration.
-Before that update, documentation checks passed for 10 YAML files, 17 Markdown files,
-99 local links and two Mermaid contracts. Keep these dated results distinct from a
-fresh release pass. For documentation-only work, use the
-[targeted lint command](docs/automation.md#recorded-local-evidence).
+Function packaging writes the full hashed lock into the packaged `requirements.txt`;
+the included hashes activate pip hash-checking mode. Native staging uses a wrapper
+containing `--require-hashes` and `-r requirements.lock`, alongside the lock itself.
+Preserve both packaging contracts. The native lock keeps stable Pydantic 2.13.5 and
+only the required Azure previews in [compatibility.md](docs/compatibility.md);
+do not resolve the whole environment with unrestricted prereleases.
 
 ## Optional local hook
 
@@ -128,7 +58,7 @@ A maintainer must configure these controls in GitHub; adding these files does **
 rulesets, branch protection, reviewer permissions, environments, or merge restrictions:
 
 - Require `Cloud-free checks (windows-2022)`, `Cloud-free checks (ubuntu-24.04)` and
-    `Secret scan` before merging into `main`, after their first run.
+    `Secret scan` before merging into `main`.
 - Require pull requests, fresh approvals after changes, resolved conversations, and code-owner
     review by `@aionic`; ensure the owner actually has repository write access. Disallow bypasses
     and force pushes according to the repository's policy.
@@ -136,10 +66,16 @@ rulesets, branch protection, reviewer permissions, environments, or merge restri
     contributors. Review workflow/dependency changes before running them. No automatic dependency merges.
 - Review Dependabot PRs for actions, pip manifests, and the documentation npm lockfile.
 
+The dated [publication verification](docs/VALIDATION.md#publication) records a green
+hosted Windows/Linux/secret-scan baseline, but `main` was unprotected with no rulesets.
+Passing checks are not enforced merge requirements; administrative configuration
+and verification remain separate from workflow execution.
+
 ### Cloud deployment is deferred
 
-No deployment workflow is provided until the resumable orchestration and private-runner contract
-are deployed and rehearsed. Do not interpret `workflow_dispatch` on the checks workflow as deployment.
+No cloud deployment workflow is provided. The accepted rehearsal recorded in
+[VALIDATION.md](docs/VALIDATION.md) does not configure GitHub deployment automation.
+Do not interpret `workflow_dispatch` on the checks workflow as deployment.
 A future workflow must consume an explicitly selected, protected environment's user-configured
 subscription/project variables, validate them against Terraform outputs, and fail on missing or
 mismatched values. It must use manual dispatch from a reviewed commit on a protected branch,
@@ -157,7 +93,7 @@ for teardown. Verify these settings before enabling any deploy job; none is conf
 
 CI selection as of 2026-09-09: Python 3.11.13 (Function) and 3.13.7 (native/client),
 Terraform 1.15.8, uv 0.8.13, Node 22.16.0,
-Mermaid CLI 11.12.0, markdownlint-cli2 0.18.1, yamllint 1.37.1, markdown-it-py 4.0.0,
+Mermaid CLI 11.12.0, markdownlint-cli2 0.18.1, yamllint 1.38.0, markdown-it-py 4.2.0,
 Gitleaks 8.24.2. Python runtime pins remain in their source manifests. A selected version is
 not evidence of a completed GitHub run or live deployment. Record actual execution results
 and environment blockers in the PR/release evidence.
@@ -184,9 +120,11 @@ Never commit Terraform state, plans, variable files, deployment logs, preflight 
 credentials, or environment-specific identifiers. Use `terraform/terraform.tfvars.example` as the
 starting point for local configuration.
 
-When behavior or deployment status changes, cross-check [README.md](README.md),
-[docs/architecture.md](docs/architecture.md) and
-[docs/ACCELERATOR-PLAN.md](docs/ACCELERATOR-PLAN.md). Preserve earlier evidence as explicitly
-historical; do not carry old deployment success into the new accelerator status. Provisioning
-a resource is not the same as exercising its application flow. No Azure writes or commits
-are implied by local checks or documentation approval.
+When behavior changes, cross-check [docs/architecture.md](docs/architecture.md) and
+[docs/deployment.md](docs/deployment.md). Keep dated results in
+[docs/VALIDATION.md](docs/VALIDATION.md) and status/history in
+[docs/STATUS.md](docs/STATUS.md), reachable from the [documentation hub](docs/README.md).
+Preserve earlier evidence as explicitly historical; do not carry old deployment
+success into a new release. Provisioning a resource is not the same as exercising
+its application flow. No Azure writes or commits are implied by local checks or
+documentation approval.

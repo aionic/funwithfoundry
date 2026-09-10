@@ -1,123 +1,179 @@
 # funwithfoundry
 
-A secure multi-region Microsoft Foundry reference POC for Azure engineers learning
-private ingestion, network-injected hosted agents and grounded retrieval.
-It is not a production-ready, active-active or zero-trust platform.
+Build a private document-to-answer workflow on Microsoft Foundry, with infrastructure,
+ingestion, a native hosted agent, a working synthetic demo and deployment checks in
+one repository. Start with the supplied corpus, prove the private path, then adapt
+the source, retrieval and deployment choices to your workload.
 
-The complete demo sends a constrained document through the **South Central US
-ingestion Function**, private Blob Storage and Content Understanding, then indexes
-it in **Central US AI Search** across two secured vWAN hubs. A native Python hosted
-agent must complete both Foundry IQ and versioned Search-toolbox retrieval before
-producing a grounded answer with source metadata.
+This is an **Azure engineering solution accelerator with a reference POC baseline**,
+not a managed product or production certification. It uses two regions to demonstrate
+capability placement and secured transit, not active-active availability.
 
-## Current status
+## What you get
 
-The fresh rebuild and core live acceptance **passed**. See [status.md](status.md)
-and the [validation report](docs/VALIDATION.md) for evidence and explicit limitations.
-Local release gates passed; GitHub-hosted checks and publication remain separate.
+| Included | What it does |
+| --- | --- |
+| Terraform infrastructure | Two secured Virtual WAN hubs, firewalls, spokes, private DNS/endpoints, Foundry dependencies, Search, Function and jumpbox/Bastion |
+| Document ingestion | Entra-authorized Python Function stages a document, extracts it with Content Understanding and indexes text with provenance |
+| Native hosted agent | Explicit LangGraph sequence requires Foundry IQ and a versioned Search toolbox before tool-free answer generation |
+| Self-contained demo | Project Cedar fixture generated inside the Function; no SharePoint tenant, uploaded test document or API key needed for the default scenario |
+| Private deployment workflow | Reviewed Terraform plans, verified tool bundle, temporary Bastion SFTP transfer, Function publishing, index/IQ initialization and native identity reconciliation |
+| Validation and operations | Local tests, hosted CI, live verification scripts, resume checkpoints, troubleshooting and ordered teardown |
 
-The user-approved teardown of the existing lab is complete: both old Foundry
-accounts were verified purged, the network/CUS/SCUS resource groups were absent,
-and Terraform state was empty. Two remaining lab-tagged, unattached NSGs were
-removed from the exact approved group. The repository and unrelated resources
-remain outside the teardown scope.
+The default interaction is a Python command-line client and scripts, not a chat
+website. SharePoint is an optional single-file source requiring separate site consent.
 
-Fresh preflight returned **51 PASS, 0 WARN, 0 FAIL**. Infrastructure is deployed,
-both capability hosts are ready, and the post-recovery Terraform plan reported
-no changes. Function ingestion, Search provenance, IQ, native dual retrieval and
-the three golden questions passed. Agent and toolbox reruns retained version 1.
-This is the approved rebuild of the existing lab, not an isolated duplicate;
-the new-VM tools and scoped runtime roles are verified. The validation report
-documents required recovery steps instead of claiming unattended deployment.
+## How it works
 
-The earlier v5 hosted-agent smoke and infrastructure checks are **historical**.
-They do not validate the new runtime or Entra-authorized Function demo.
-Real SharePoint and interactive Bastion RDP remain unverified here. See the
-[evidence table](docs/architecture.md#evidence-status).
+1. An authorized caller on the private jumpbox invokes the ingestion Function in
+   **South Central US** using its managed identity and the `Ingestion.Invoke` app role.
+2. The Function generates the fixture, or reads the configured SharePoint file. It
+   stages the bytes in Blob Storage and calls Content Understanding for extraction.
+3. Extracted text and source identifiers are written to **Central US AI Search**
+   through secured cross-region transit. Document-level indexing must succeed.
+4. The caller sends a question to the native hosted agent through private Foundry
+   ingress. The graph calls IQ, validates its output, then calls the Search toolbox
+   with the same full question and validates that result too.
+5. Only then does the model synthesize an answer with source metadata. Failed,
+   empty or mismatched tool results do not become a successful grounded response.
 
-## Quickstart
+IQ uses a planner model to retrieve from the index; the toolbox provides a separate
+simple-text retrieval route to **that same index**. They are two required paths,
+not independent sources of truth. The supplied index is text/semantic, not vector.
 
-1. Review [deployment prerequisites and the short path](docs/deployment.md), including
-   separate ARM/PIM and Entra app-registration/app-role permissions.
-2. Use uv with isolated component environments and the actual runtime/dependency
-   settings in [compatibility.md](docs/compatibility.md).
-3. Run [local checks](docs/automation.md#local-checks) before any cloud work.
-4. Review the two approved Mermaid contracts and reproduced 3840 x 2160 PNGs below.
-   Both images were inventoried and visually inspected; the approved Mermaid hashes
-   are unchanged. Diagram approval is complete, not a pending gate.
-5. Follow the approved rebuild's remaining gates, ordered workflow and
-   [complete Function demo](docs/deployment.md#complete-demo). SharePoint is optional
-   and requires a separate site-scoped consent and real invocation.
+![Private regional topology and service boundaries](docs/diagrams/capability-host-deployment-azure-architecture.png)
 
-The staged entrypoint is [scripts/Invoke-Accelerator.ps1](scripts/Invoke-Accelerator.ps1).
-Use the commands in [deployment.md](docs/deployment.md). The verified offline bundle
-contains four artifacts totaling **133,431,295 bytes**: azd `1.33.0` MSI, uv `0.8.13`
-ZIP, the official Python `3.13.7` PSF-signed installer and a ZIP of eight pinned
-extensions. Live SFTP transfer through Bastion verified all four hashes on the old
-VM. Cleanup required an explicitly user-approved restart for a loaded profile;
-durable managed Run Command read-back confirmed `cleaned=true`. This does not prove
-installation or unattended bootstrap on the new VM.
+See the [runtime diagram](docs/diagrams/runtime-flow-azure-architecture.png) and
+[architecture guide](docs/architecture.md) for component ownership, identities,
+DNS/routing, failure behavior and the source files behind each part.
 
-## Architecture contracts
+## Before you deploy
 
-- [Secure multi-region topology][topology]
-   separates control-plane operations, PaaS services, private endpoints and
-   injected compute.
-- [Document-to-grounded-answer flow][runtime]
-   shows authorized Function ingestion, actual SCUS-to-CUS indexing and
-   deterministic retrieval.
+- Use a Windows workstation with PowerShell 7.3+, Git, Azure CLI and its Bastion
+  extension, Terraform, azd, uv, Node.js and native Windows OpenSSH clients.
+  The [version matrix](docs/compatibility.md) records the tested toolchain.
+- Obtain Azure resource/RBAC authority and **separate Entra application and app-role
+  assignment authority**. ARM Owner/PIM alone does not grant tenant consent.
+- Validate regional model/VM/network capacity, policy and data-residency requirements.
+  `GlobalStandard` does not pin inference to the two resource regions.
+- Budget for two firewalls, two hubs, Bastion, Search and Cosmos, even when idle.
+  **VM deallocation is not a zero-cost pause.** No fixed deployment time or cost is promised.
+- Protect Terraform state, plans and azd progress on encrypted, access-controlled
+  storage with backups outside the lab's destruction scope. State contains secrets,
+  including the jumpbox administrator password.
 
-[topology]: docs/diagrams/capability-host-deployment-azure-architecture.mmd
-[runtime]: docs/diagrams/runtime-flow-azure-architecture.mmd
+The detailed [deployment guide](docs/deployment.md) covers prerequisites, setup,
+stage outputs, failure recovery and optional SharePoint consent. Deployment has
+review gates and can require operator recovery; it is not an unattended one-click install.
 
-![Approved topology design, not live deployment evidence](docs/diagrams/capability-host-deployment-azure-architecture.png)
+## Deploy the accelerator
 
-![Approved runtime design, not live execution evidence](docs/diagrams/runtime-flow-azure-architecture.png)
+Run these from a **new checkout** for a new environment. Do not replace an existing
+lab's variable file or state. No teardown is required to start a new deployment.
 
-The existing topology filename is retained for continuity, but its viewpoint is
-no longer just capability-host deployment.
-See [architecture.md](docs/architecture.md)
-for decisions, identity scopes, DNS, routing, data ownership and review notes.
+```powershell
+git clone https://github.com/aionic/funwithfoundry.git
+Set-Location funwithfoundry
+if (Test-Path .\terraform\terraform.tfvars) { throw 'Existing configuration: review it instead of overwriting.' }
+Copy-Item .\terraform\terraform.tfvars.example .\terraform\terraform.tfvars
+```
 
-## Privacy and scope
+Edit the private variable file with your subscription and a unique resource prefix;
+leave `native_agent_principal_id` empty on first deployment. Complete the
+[local setup and release checks](docs/TESTING.md#prepare-local-environments), then
+authenticate and prepare the tool bundle:
 
-SharePoint/Graph is **public HTTPS egress**, even when the Function is private.
-Private endpoints secure configured data-plane access; they do not make all
-platform, identity, package-feed or telemetry traffic private. Foundry PaaS remains
-outside the VNet; its private endpoints are in the PE subnet and its agent compute
-is associated with the dedicated injection subnet.
+```powershell
+$SubscriptionId = '<your-subscription-guid>'
+$EnvironmentName = 'funwithfoundry-dev'
+az login
+az account set --subscription $SubscriptionId
+az account show --output table
+pwsh -NoProfile -File .\scripts\Get-RunnerToolManifest.ps1 -OutputPath .\.azure\runner-tools.json -PythonVersion 3.13.7
+```
 
-`GlobalStandard` model deployments do **not** pin processing to Central US or South
-Central US. The broad firewall allowlist is a POC tradeoff, not an exfiltration-proof
-policy. The index is text/semantic with no vector fields; the toolbox deliberately
-uses `query_type: simple`. No regional replication/failover, production SLO,
-customer-managed keys or Azure Monitor Private Link Scope is promised.
+Confirm that the subscription matches your Terraform input. Review the generated
+manifest and its adjacent artifact cache, then run the stages in order, stopping
+on any error and approving only the intended plans:
 
-## Cost and operations
+```powershell
+$ErrorActionPreference = 'Stop'
+$ToolManifestPath = (Resolve-Path .\.azure\runner-tools.json).Path
+$Deployment = @{
+    SubscriptionId = $SubscriptionId
+    EnvironmentName = $EnvironmentName
+    ToolManifestPath = $ToolManifestPath
+}
+.\scripts\Invoke-Accelerator.ps1 @Deployment -Stage Preflight
+.\scripts\Invoke-Accelerator.ps1 @Deployment -Stage Infrastructure
+.\scripts\Invoke-Accelerator.ps1 @Deployment -Stage Workload -Resume
+.\scripts\Invoke-Accelerator.ps1 @Deployment -Stage Verify -Resume
+```
 
-Two Azure Firewalls, two vWAN hubs, Bastion, Search and Cosmos have ongoing charges.
-**Deallocating the VM does not stop firewall, hub, Bastion or Search billing.**
-Use a dated estimate and budget alerts.
-[operations.md](docs/operations.md) covers cost
-modes, troubleshooting, rollback and exact-ID teardown ordering: project capability
-host, accounts, verified purge, then network. Do not purge by a broad prefix.
+`Preflight` reads Azure; `Infrastructure` provisions resources; `Workload` installs
+the private runner tools and publishes code/retrieval definitions; `Verify` checks
+the deployed flow. The jumpbox authenticates with its own identity, not a copied
+workstation login cache. Runtime RBAC is reconciled after the agent identity exists.
 
-Terraform state/plans and azd state can contain credentials and identifiers.
-Protect them outside version control; ignore rules alone are not protection. See
-[SECURITY.md](SECURITY.md) and the optional Entra-authenticated remote-backend guidance
-in [deployment.md](docs/deployment.md#state-and-configuration).
+`EnvironmentName` separates progress records, **not Terraform state**. Use a separate
+checkout/state and unique naming for another lab. Keep the same reviewed settings
+and manifest through all stages. Region or VM-size changes also need matching
+[preflight arguments](docs/deployment.md#configure-the-environment).
+See [resume guidance](docs/deployment.md#resume-and-release) before retrying a timeout.
 
-## Maintenance and support
+## Try the demo
 
-This POC supports the default branch; it has no support SLA or certified broad version
-matrix. [compatibility.md](docs/compatibility.md) distinguishes pins, ranges, historical
-observations and untested combinations. [automation.md](docs/automation.md) explains
-advisory hooks, required PR checks, OIDC/private-runner trust and approval gates.
-Dependency updates require review and must never automatically deploy infrastructure.
+The `Verify` stage invokes the real Function fixture and checks provenance, IQ and
+the native dual-retrieval response. For interactive questions, follow the
+[private client setup](src/hello_world/README.md) and
+[complete demo](docs/deployment.md#complete-demo). Workstation login alone does not
+provide a network route to the private agent endpoint.
 
-Report reproducible issues without private environment data. Report vulnerabilities
-privately using [SECURITY.md](SECURITY.md). The approved publication scope is recorded
-in [docs/ACCELERATOR-PLAN.md](docs/ACCELERATOR-PLAN.md).
+| Ask about Project Cedar | Expected fixture fact |
+| --- | --- |
+| Who is the fictional project owner? | Morgan Example |
+| When is the fictional launch date? | 15 October 2026 |
+| What is the document retention period? | 30 days |
+| What is the approved budget? | Not present; the answer should acknowledge uncertainty |
+
+These are expected demo outcomes, not claims about your deployment. Record your
+own results using the [testing guide](docs/TESTING.md).
+
+## Adapt it to your workload
+
+Start with a uniformly authorized test corpus, then change one layer at a time:
+
+- **Connect your document:** configure the existing SharePoint source and obtain
+  site-scoped read consent. There is no end-user SharePoint ACL trimming.
+- **Expand the corpus:** add source adapters, chunk identity, ingestion scheduling
+  and deletion reconciliation; the reference is not a bulk crawler.
+- **Change retrieval or tools:** evolve the schema, graph gates, toolbox and strict
+  client together. Enabling embeddings alone does not create vector search.
+- **Operationalize:** design queueing, retention, telemetry, remote state and a trusted
+  private deployment runner before adding throughput or a user-facing interface.
+- **Change regions or resilience:** review quotas, subnet/routing assumptions, state
+  replication and failover. A region-name change is not an HA/DR implementation.
+
+The [architecture extension playbooks](docs/architecture.md#extension-playbooks)
+identify what is configurable today, what requires code and how to validate each change.
+
+## Operate and maintain
+
+Use the [operations guide](docs/operations.md) for troubleshooting, pause, rollback
+and exact-state teardown. Foundry capability-host/account deletion and verified purge
+must precede network removal. Never purge by a broad name prefix.
+
+Private endpoints are only part of the security boundary: Graph, identity, build
+feeds and selected telemetry still use public HTTPS. The firewall allowlist is a
+POC tradeoff, and no production SLO or complete exfiltration control is claimed.
+Read [SECURITY.md](SECURITY.md) before using sensitive data.
+
+[Documentation index](docs/README.md) links deployment, architecture, testing,
+operations and extension guidance. Dated [status](docs/STATUS.md) and
+[validation evidence](docs/VALIDATION.md) live under `docs`, separate from these
+instructions. See [CONTRIBUTING.md](CONTRIBUTING.md) for contributions and
+[automation.md](docs/automation.md) for CI and dependency review. Updates do not
+automatically deploy Azure resources. The default branch has no support SLA.
 
 ## License
 

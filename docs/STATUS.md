@@ -3,7 +3,7 @@
 **Status:** Rebuild and core live acceptance passed, 2026-09-10 UTC.
 **Tracking:** Beads epic `funwithfoundry-106`, live rehearsal `funwithfoundry-dfu`.
 
-See [docs/VALIDATION.md](docs/VALIDATION.md) for current results, correlation IDs,
+See [VALIDATION.md](VALIDATION.md) for current results, correlation IDs,
 recovery boundaries and explicitly untested optional scenarios. Publication and
 GitHub-hosted checks passed separately from the accepted live deployment.
 
