@@ -327,9 +327,7 @@ try {
     function Invoke-ArtifactCommand {
         param([string]$Command, [string[]]$Arguments, [Collections.Generic.List[string]]$StandardError)
         if ($Command -eq 'ssh-keygen.exe') {
-            $key = $Arguments[[array]::IndexOf($Arguments, '-f') + 1]
-            Set-Content -LiteralPath $key -Value 'FAKE TEST KEY'
-            Set-Content -LiteralPath "$key.pub" -Value 'ssh-ed25519 AAAATEST fixture'
+            $null = & $nativeArtifactCommand $Command $Arguments -StandardError $StandardError
             return
         }
         if ($Command -ne 'sftp.exe') { throw "Unexpected native command $Command" }
