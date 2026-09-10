@@ -5,7 +5,7 @@
 
 See [docs/VALIDATION.md](docs/VALIDATION.md) for current results, correlation IDs,
 recovery boundaries and explicitly untested optional scenarios. Publication and
-GitHub-hosted checks are separate from this accepted working-tree deployment.
+GitHub-hosted checks passed separately from the accepted live deployment.
 
 - Implementation, approved architecture PNGs, and the full local release gate passed.
 - The old lab was fully torn down: both Foundry accounts purged, all three lab
@@ -32,11 +32,14 @@ GitHub-hosted checks are separate from this accepted working-tree deployment.
   users, tasks, keys, firewall rules and locks: none.
 - The jumpbox is confirmed deallocated. The rebuilt services remain deployed and
   continue billing. All six implementation/rehearsal phases are closed; publication
-  follow-up `funwithfoundry-eei` tracks hosted checks and repository protections.
-- Published to GitHub `main` in commit `00ffc1d`, followed by workflow correction
-  `079b8bb`. The exact staged snapshot passed the local secret scan. See the
-  [GitHub Actions run](https://github.com/aionic/funwithfoundry/actions/runs/34492853229)
-  for hosted results; local and live Azure acceptance do not imply hosted CI success.
+  and hosted checks are complete under `funwithfoundry-eei`.
+- Published to GitHub `main` in commit `00ffc1d`, with CI compatibility fixes through
+  `ef23830`. The exact staged publication snapshot passed the local secret scan.
+  [GitHub Actions run 34493693637](https://github.com/aionic/funwithfoundry/actions/runs/34493693637)
+  passed Windows release checks, Linux runtime checks and the hosted secret scan.
+- Read-only GitHub verification found no protection on `main` and no repository
+  rulesets. Checks pass but are not enforced as merge requirements. Administrative
+  follow-up `funwithfoundry-48p` requires policy authorization; no settings changed.
 
 The deployed identifiers and results below describe the previous environment,
 which has been removed. Do not reuse its agent principal or treat its acceptance

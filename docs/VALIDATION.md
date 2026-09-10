@@ -38,8 +38,23 @@ from Terraform outputs; suffixes change on rebuild.
 - Reusable Verify end-to-end request: `15bddb25-47aa-4e82-8926-e9b74f5067ce`.
 
 Operational state, full logs and saved Terraform plans remain outside version
-control. They can contain secrets and are not publication artifacts. Code changes
-were validated in the working tree; a successful GitHub workflow is not implied.
+control. They can contain secrets and are not publication artifacts. Local and
+live validation are distinct from the hosted publication checks below.
+
+## Publication
+
+Published to GitHub `main` in commit `00ffc1d`, with CI compatibility fixes through
+`ef23830`. [Run 34493693637](https://github.com/aionic/funwithfoundry/actions/runs/34493693637)
+passed all three jobs: Windows release checks, Linux runtime checks and secret scan.
+The fixes resolve runner paths after startup, install Function Python 3.11.13 using
+the pinned uv, and create test SSH keys with native key generation so ownership
+matches production on hosted Windows. Production ACL enforcement is unchanged.
+
+Authenticated read-only verification returned `Branch not protected` for `main`;
+the repository ruleset list was empty. Passing checks are not enforced as merge
+requirements. Beads `funwithfoundry-48p` tracks authorization and configuration of
+that policy. No repository protection settings or Azure resources were changed
+during publication.
 
 ## Recovery Boundaries
 
@@ -76,8 +91,8 @@ guest deployment command proves a successful current API read.
 - Cloud-scored evaluation: not run for this rebuild. The three directly executed
   golden questions are not Azure evaluator scores. The optional evaluation seed is
   aligned with Project Cedar and excluded from deployed agent packaging.
-- GitHub-hosted workflow execution and branch-protection settings: require separate
-  publication/admin verification; local release checks are not a substitute.
+- Branch-protection configuration: not changed; the verified absence of enforced
+  required checks is tracked separately from the successful hosted workflow.
 
 The rebuilt services remain deployed and continue billing. Only the jumpbox is
 deallocated after acceptance; this is not a zero-cost pause.
