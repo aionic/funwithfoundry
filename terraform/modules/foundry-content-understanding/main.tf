@@ -26,9 +26,6 @@ locals {
   }
 }
 
-# Landing zone for the SharePoint document before Content Understanding analyses it.
-# Stays private: the Function reads it over the blob private endpoint and sends bytes
-# to CU via analyzeBinary, because CU cannot fetch a private blob by URL.
 resource "azurerm_storage_account" "staging" {
   name                = "${var.prefix}${local.suffix}stage"
   resource_group_name = var.resource_group_name

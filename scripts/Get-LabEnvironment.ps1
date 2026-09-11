@@ -89,6 +89,7 @@ $lab = [pscustomobject]@{
         ApiClientId    = $o.ingest_function.value.api_client_id
         ApiScope       = $o.ingest_function.value.api_scope
     }
+    NativeIngestion    = if ($o.PSObject.Properties['native_ingestion']) { $o.native_ingestion.value } else { $null }
     Hosts              = [pscustomobject]@{
         FoundryServices = "$($p.account).services.ai.azure.com"
         FoundryCogSvc   = "$($p.account).cognitiveservices.azure.com"

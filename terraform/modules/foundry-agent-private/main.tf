@@ -107,9 +107,12 @@ resource "azapi_resource" "search" {
     sku = {
       name = var.search_sku
     }
-    identity = {
-      type = "SystemAssigned"
-    }
+    identity = merge(
+      { type = length(var.search_user_assigned_identity_ids) == 0 ? "SystemAssigned" : "SystemAssigned, UserAssigned" },
+      length(var.search_user_assigned_identity_ids) == 0 ? {} : {
+        userAssignedIdentities = { for identity_id in values(var.search_user_assigned_identity_ids) : identity_id => {} }
+      }
+    )
     properties = {
       replicaCount   = 1
       partitionCount = 1

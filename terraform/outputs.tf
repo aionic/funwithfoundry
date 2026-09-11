@@ -105,6 +105,30 @@ output "ingest_function" {
   }
 }
 
+output "native_ingestion" {
+  description = "Native Blob knowledge-source inputs. Approve every listed SPL before creating private ingestion; links do not imply transit through the lab hubs."
+  value = {
+    storage_resource_id  = module.foundry_secondary.staging_storage_id
+    storage_endpoint     = module.foundry_secondary.staging_blob_endpoint
+    container_name       = "spo-staging"
+    folder_path          = "native/"
+    identity_resource_id = azurerm_user_assigned_identity.search_ingestion.id
+    ai_services_endpoint = module.foundry_secondary.ai_services_endpoint
+    openai_endpoint      = module.foundry_secondary.openai_endpoint
+    chat_deployment      = module.foundry_secondary.chat_deployment
+    chat_model           = module.foundry_secondary.chat_model
+    embedding_deployment = module.foundry_secondary.embedding_deployment
+    embedding_model      = module.foundry_secondary.embedding_model
+    shared_private_links = {
+      for name, link in azapi_resource.search_ingestion_shared_private_link : name => {
+        id                 = link.id
+        target_resource_id = local.native_ingestion_shared_private_links[name].target_resource_id
+        group_id           = local.native_ingestion_shared_private_links[name].group_id
+      }
+    }
+  }
+}
+
 output "sharepoint" {
   value = {
     hostname  = var.sharepoint_hostname

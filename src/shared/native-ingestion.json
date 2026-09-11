@@ -1,0 +1,62 @@
+{
+  "contractVersion": 2,
+  "owner": "accelerator-native-indexer",
+  "apiVersion": "2026-08-01-preview",
+  "knowledgeSourceName": "spo-native",
+  "knowledgeBaseName": "spo-native-knowledge-base",
+  "pipeline": {
+    "datasource": "spo-native-datasource",
+    "indexer": "spo-native-indexer",
+    "skillset": "spo-native-skillset",
+    "index": "spo-native-index"
+  },
+  "indexerParameters": {
+    "maxFailedItems": 0,
+    "configuration": {
+      "executionEnvironment": "private",
+      "allowSkillsetToReadFileData": true,
+      "parsingMode": "default",
+      "dataToExtract": "storageMetadata"
+    }
+  },
+  "schedule": { "interval": "PT5M" },
+  "expectedContentUnderstanding": {
+    "@odata.type": "#Microsoft.Skills.Util.ContentUnderstandingSkill",
+    "name": "content-understanding",
+    "context": "/document",
+    "modelName": "gpt-5.2",
+    "extractionOptions": ["images", "locationMetadata"],
+    "chunkingProperties": { "method": "semantic", "unit": "tokens", "maximumLength": 500, "overlapLength": 0 },
+    "inputs": [{ "name": "file_data", "source": "/document/file_data" }],
+    "outputs": [
+      { "name": "text_sections", "targetName": "text_sections" },
+      { "name": "normalized_images", "targetName": "normalized_images" }
+    ]
+  },
+  "expectedEmbedding": {
+    "@odata.type": "#Microsoft.Skills.Text.AzureOpenAIEmbeddingSkill",
+    "name": "embedding",
+    "modelName": "text-embedding-3-large",
+    "context": "/document/text_sections/*",
+    "dimensions": 3072,
+    "inputs": [{ "name": "text", "source": "/document/text_sections/*/content" }],
+    "outputs": [{ "name": "embedding", "targetName": "text_vector" }]
+  },
+  "providerLimitations": [
+    "Direct private indexers with built-in skills support S1+ services created after April 3, 2024. Embedding skills also require a high-capacity region. The generated azureBlob private knowledge-source S2 limit does not apply to this searchIndex source.",
+    "Content Understanding semantic chunking and model selection use preview API features. The secondary Foundry account must support the selected chat model and have its deployment available.",
+    "Only missing definitions are created. Existing mismatches, including an azureBlob source with the same name, require operator resolution; no automatic update, deletion or fallback occurs.",
+    "Creating the enabled indexer starts native indexing automatically; PT5M scheduling continues independently of the Function and initializer.",
+    "Cloud-free tests validate templates and guards, not live indexing, S1 service eligibility, model support, RBAC or shared-private-link approval."
+  ],
+  "references": [
+    "https://learn.microsoft.com/en-us/azure/search/search-indexer-howto-access-private",
+    "https://learn.microsoft.com/en-us/azure/search/search-how-to-index-azure-blob-storage",
+    "https://learn.microsoft.com/en-us/azure/search/agentic-knowledge-source-how-to-search-index",
+    "https://learn.microsoft.com/en-us/rest/api/searchservice/knowledge-sources/create-or-update?view=rest-searchservice-2026-08-01-preview",
+    "https://learn.microsoft.com/en-us/azure/search/cognitive-search-skill-content-understanding",
+    "https://learn.microsoft.com/en-us/azure/search/cognitive-search-attach-cognitive-services",
+    "https://learn.microsoft.com/en-us/azure/search/cognitive-search-skill-azure-openai-embedding",
+    "https://learn.microsoft.com/en-us/azure/search/search-howto-schedule-indexers"
+  ]
+}

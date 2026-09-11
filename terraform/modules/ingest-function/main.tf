@@ -189,11 +189,6 @@ resource "azurerm_function_app_flex_consumption" "this" {
     SP_SITE_PATH     = var.sharepoint_site_path
     SP_FILE_PATH     = var.sharepoint_file_path
 
-    CU_ENDPOINT     = var.content_understanding_endpoint
-    CU_ANALYZER_ID  = "prebuilt-document"
-    SEARCH_ENDPOINT = var.search_endpoint
-    SEARCH_INDEX    = var.search_index
-
     STAGING_BLOB_ENDPOINT = var.staging_blob_endpoint
     STAGING_CONTAINER     = "spo-staging"
   }
@@ -254,17 +249,5 @@ resource "azurerm_role_assignment" "func_storage_table" {
 resource "azurerm_role_assignment" "func_staging_blob" {
   scope                = var.staging_storage_id
   role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = azurerm_user_assigned_identity.func.principal_id
-}
-
-resource "azurerm_role_assignment" "func_cognitive" {
-  scope                = var.content_understanding_account_id
-  role_definition_name = "Cognitive Services User"
-  principal_id         = azurerm_user_assigned_identity.func.principal_id
-}
-
-resource "azurerm_role_assignment" "func_search_index" {
-  scope                = var.search_id
-  role_definition_name = "Search Index Data Contributor"
   principal_id         = azurerm_user_assigned_identity.func.principal_id
 }

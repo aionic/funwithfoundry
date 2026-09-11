@@ -16,22 +16,18 @@ mock_provider "azuread" {
 }
 
 variables {
-  prefix                           = "ingesttest"
-  tenant_id                        = "11111111-1111-4111-8111-111111111111"
-  authorized_caller_principal_ids  = { jumpbox = "44444444-4444-4444-8444-444444444444" }
-  resource_group_name              = "rg-ingest-test"
-  location                         = "southcentralus"
-  function_subnet_id               = "/subscriptions/11111111-1111-4111-8111-111111111111/resourceGroups/rg-ingest-test/providers/Microsoft.Network/virtualNetworks/test/subnets/function"
-  private_endpoint_subnet_id       = "/subscriptions/11111111-1111-4111-8111-111111111111/resourceGroups/rg-ingest-test/providers/Microsoft.Network/virtualNetworks/test/subnets/private"
-  staging_storage_id               = "/subscriptions/11111111-1111-4111-8111-111111111111/resourceGroups/rg-ingest-test/providers/Microsoft.Storage/storageAccounts/stagingtest"
-  staging_blob_endpoint            = "https://stagingtest.blob.core.windows.net"
-  content_understanding_account_id = "/subscriptions/11111111-1111-4111-8111-111111111111/resourceGroups/rg-ingest-test/providers/Microsoft.CognitiveServices/accounts/cutest"
-  content_understanding_endpoint   = "https://cutest.cognitiveservices.azure.com"
-  search_id                        = "/subscriptions/11111111-1111-4111-8111-111111111111/resourceGroups/rg-ingest-test/providers/Microsoft.Search/searchServices/searchtest"
-  search_endpoint                  = "https://searchtest.search.windows.net"
-  sharepoint_hostname              = "tenant.sharepoint.com"
-  sharepoint_site_path             = "/sites/Example"
-  sharepoint_file_path             = "Documents/Example.pdf"
+  prefix                          = "ingesttest"
+  tenant_id                       = "11111111-1111-4111-8111-111111111111"
+  authorized_caller_principal_ids = { jumpbox = "44444444-4444-4444-8444-444444444444" }
+  resource_group_name             = "rg-ingest-test"
+  location                        = "southcentralus"
+  function_subnet_id              = "/subscriptions/11111111-1111-4111-8111-111111111111/resourceGroups/rg-ingest-test/providers/Microsoft.Network/virtualNetworks/test/subnets/function"
+  private_endpoint_subnet_id      = "/subscriptions/11111111-1111-4111-8111-111111111111/resourceGroups/rg-ingest-test/providers/Microsoft.Network/virtualNetworks/test/subnets/private"
+  staging_storage_id              = "/subscriptions/11111111-1111-4111-8111-111111111111/resourceGroups/rg-ingest-test/providers/Microsoft.Storage/storageAccounts/stagingtest"
+  staging_blob_endpoint           = "https://stagingtest.blob.core.windows.net"
+  sharepoint_hostname             = "tenant.sharepoint.com"
+  sharepoint_site_path            = "/sites/Example"
+  sharepoint_file_path            = "Documents/Example.pdf"
   dns_zone_ids = {
     "privatelink.blob.core.windows.net"  = "/subscriptions/11111111-1111-4111-8111-111111111111/resourceGroups/rg-ingest-test/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net"
     "privatelink.queue.core.windows.net" = "/subscriptions/11111111-1111-4111-8111-111111111111/resourceGroups/rg-ingest-test/providers/Microsoft.Network/privateDnsZones/privatelink.queue.core.windows.net"
@@ -42,6 +38,17 @@ variables {
 
 run "authenticated_private_ingestion" {
   command = plan
+
+  assert {
+    condition = (
+      alltrue([for name in keys(azurerm_function_app_flex_consumption.this.app_settings) : !startswith(name, "CU_") && !startswith(name, "SEARCH_")]) &&
+      azurerm_function_app_flex_consumption.this.app_settings["STAGING_BLOB_ENDPOINT"] == var.staging_blob_endpoint &&
+      azurerm_function_app_flex_consumption.this.app_settings["STAGING_CONTAINER"] == "spo-staging" &&
+      azurerm_role_assignment.func_staging_blob.scope == var.staging_storage_id &&
+      azurerm_role_assignment.func_staging_blob.role_definition_name == "Storage Blob Data Contributor"
+    )
+    error_message = "The Function must stage documents in Blob without CU or Search configuration."
+  }
 
   assert {
     condition = (

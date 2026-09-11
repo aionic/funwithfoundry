@@ -8,10 +8,20 @@ runtime proof. Dated evidence and remaining gates are in
 [VALIDATION.md](VALIDATION.md) and [STATUS.md](STATUS.md), with
 architectural context in [architecture.md](architecture.md#evidence-status).
 
-The recorded rebuild passed private bootstrap, Function ingestion and native
-runtime acceptance. Dated results, recovery steps and hosted CI evidence live in
+The historical custom-pipeline rebuild passed private bootstrap, Function ingestion
+and hosted runtime acceptance. Dated results, recovery steps and hosted CI evidence live in
 [STATUS.md](STATUS.md) and [VALIDATION.md](VALIDATION.md). Those results describe
 that deployment, not readiness of another checkout or environment.
+
+As of 2026-09-11, the explicit S1 native-indexer pipeline passed the full local
+release gate, live fixture-backed acceptance and two normal Verify runs without
+manual rebind or agent redeployment. Actual SharePoint integration is deferred
+because no sample is available; acceptance of the structure is not proof or grant
+approval. A clean full orchestrator run and deletion acceptance remain unproven.
+The VM is confirmed deallocated, and no further cloud actions are planned for
+publication. Read
+[native ingestion](native-ingestion.md) before migration; existing diagrams and v1
+acceptance are historical, not approval of the new semantics.
 
 Recheck time-bound ARM PIM and tenant authority before each long execution window;
 subscription preflight alone proves neither. Keep historical deployment results
@@ -29,7 +39,13 @@ in the [status record](STATUS.md), separate from a new release's evidence. Use
 | Same-region call works, cross-region call fails | Inspect both routing intents and the private-to-private network rule before application rules | Preserve private addressing; do not broaden public access |
 | IQ planner 403 | Check Search MI role, approved `openai_account` shared private link and `.openai.azure.com` model URI | Correct the model endpoint or scoped permission; IQ calls a model, not the hosted agent |
 | IQ returns bare 400 | Check API-specific request schema, especially unsupported `alwaysQuery` | Capture sanitized status/request ID; inspect a controlled diagnostic response, never tokens |
-| Agent startup or toolbox failure | Check actual deployed principal, required tool name, current toolbox version, endpoint and schema | Compare expected simple text query and fail closed on either retrieval branch |
+| Agent startup or toolbox failure | Check actual deployed principal, required tool name, current toolbox version, endpoint and explicit index | Require `spo-native-index` hybrid binding and current IQ/native outputs; never use another sample's service IDs |
+| Function says `202 staged` but no answer | HEAD the stable blob and inspect `spo-native-indexer` scope, freshness and errors | Staging is not indexing; do not restore Function CU/Search calls or roles |
+| Native initialization blocks on definition mismatch | Compare sanitized contract path against all six definitions, including any old `azureBlob` KS | Stop for approved compatibility/recovery review; never weaken the contract or update/delete/recreate automatically |
+| Datasource ETag changed after indexing | Check the receipt's configuration bindings and visible definition | Guarded refresh allows one current-ETag `If-Match` PUT only for a valid matching receipt with a stale ETag; no 412 retry; missing/wrong receipts require reviewed rebind |
+| Earlier S2 quota failure is treated as a current blocker | Distinguish the generated private Blob KS attempt from the explicit S1 indexer path | Preserve the failure record; verify current S1 creation-date/region prerequisites without forcing an S2 upgrade |
+| Native dependency access fails | Check Search ingestion UAMI roles and exact secondary `blob`, `foundry_account`, `openai_account` links | Obtain separate target-side approval; preserve primary planner link and public-access restrictions |
+| Citations point to Blob instead of SharePoint | Check child `doc_url` projection from `metadata_storage_path` and original blob metadata | This is the current contract; do not claim original SharePoint URLs, digest proof or caller ACL trimming from child URLs |
 | Function package accepted but no usable trigger | Check active deployment/build result, trigger sync and authorized fixture invocation | `Accepted` or successful ARM Run Command alone is not healthy code |
 | Installer/azd command missing on jumpbox | Check process identity, PATH, exact versions and approved egress | Complete reviewed bootstrap; no copied login cache or blanket firewall opening |
 | Python 3.13.7 bootstrap fails | Check the fourth artifact's hash/signature, installer status and explicit interpreter path | Use the verified offline installer; do not enable arbitrary release-host egress |
@@ -48,13 +64,28 @@ Azure Firewall universally breaks private endpoints. See the exact rule source i
 
 ## Rollback
 
+Contract version 2, owner `accelerator-native-indexer`, defines six explicit resources:
+`spo-native-datasource`, `spo-native-index`, `spo-native-skillset`,
+`spo-native-indexer`, the `searchIndex` KS `spo-native` and
+`spo-native-knowledge-base`. Initialization validates existing definitions before
+creating missing ones and reports configuration-only success. It performs no
+automatic migration or delete. Datasource-only reviewed rebind and guarded stale-ETag
+refresh are conditional-write exceptions, not rollback; a matching current receipt
+is read-only. See [receipt gates](native-ingestion.md#datasource-receipt-and-resume).
+An old `azureBlob` KS with the same
+name blocks reuse and requires approved resolution. Partial definitions may remain
+after a later failure, and creation of an enabled indexer starts scheduled native
+work. Preserve failed-S2 evidence and historical Function resources for exact-state
+recovery; do not remove them merely to make a retry pass.
+
 1. Stop deployment progression and preserve sanitized stage evidence, state and package hashes.
 2. Read back deployment, role and toolbox state. Do not retry unknown creates blindly.
 3. Select the last reviewed agent package/version and compatible toolbox version;
    compare schema and endpoint binding before an approved republish/redeploy.
 4. Run a full Terraform plan against the retained state before accepting infrastructure
    changes. Restoring an old state file is not a rollback of real Azure resources.
-5. Revalidate authorized ingestion, dual retrieval and denial checks before resuming.
+5. Revalidate staging provenance, fresh native indexing/child chunks, dual retrieval
+   and denial checks before resuming; do not relabel old custom-pipeline results.
 
 No automatic rollback or restore time is certified. Source/index schema migrations
 can be destructive; preserve source provenance and choose a reviewed rebuild or
@@ -123,8 +154,8 @@ stages and verification.
 
 | Mode | Effect | Continuing charges and limitations |
 | --- | --- | --- |
-| Active demo | VM and all services available | Two firewalls, vWAN hubs, Bastion, Search, Cosmos, storage, model tokens, Function/build usage and data transfer |
-| Pause | `Stop-Lab -Mode Pause` requests jumpbox deallocation only | Firewalls, hubs, Bastion and Search still bill; VM disks/storage and other service charges remain |
+| Active demo | VM and all services available | Two firewalls, hubs, Bastion, Search (local default S1), Cosmos, storage, scheduled CU/image/embedding and query/model usage, Function/build and transfer |
+| Pause | `Stop-Lab -Mode Pause` requests jumpbox deallocation only | Does not disable `PT5M` indexing or other services; Search/network/storage and applicable processing charges remain |
 | Teardown | Approved ordered removal and purge | Irreversible data/service loss; inspect residuals and retained backups before claiming spend has stopped |
 
 VM deallocation is not firewall shutdown or a zero-cost pause. No supported firewalls-only
@@ -133,9 +164,20 @@ budget alerts for actual SKUs/region/usage; do not reuse an old monthly dollar f
 Choose the post-acceptance cost mode with the operator. A previous teardown or
 rebuild approval does not authorize another deletion.
 
+Review actual Search tier overrides and UAMI/shared-private-link targets before
+live changes. Direct private built-in-skill indexers support S1+ on services created
+after April 3, 2024; embeddings also require a high-capacity region. The current
+Central US service was created September 9, 2026. The generated private Blob KS S2
+path is not used; its quota blocker is historical. See
+[eligibility details](native-ingestion.md#identity-network-and-cost-review).
+The same ingestion UAMI, three secondary links and primary planner path remain;
+no broader roles or relaxed public-access controls are implied. `PT5M` stays enabled
+even for an empty scope and is not a freshness SLA or promise of zero processing cost.
+
 ## Observability and capacity
 
-Capture request ID, source/document ID where appropriate, package/version digest,
+Capture request ID, source/hash/blob identifiers, generated child/parent identifiers,
+fresh indexer execution timestamps, package/version digest,
 stage, tool name, elapsed time and outcome. Avoid raw document bodies, bearer tokens,
 full upstream error responses and unredacted Terraform/Graph output. Restrict access
 and retention for diagnostic exports. Application telemetry does not automatically
@@ -148,9 +190,18 @@ The agent subnet uses a dedicated /24 in source; never manually clear its servic
 association link or reuse a partially torn-down injection configuration.
 
 There is no tested SLO, RTO, RPO, cross-region failover, load envelope or automatic
-recovery. Ingestion is synchronous with bounded calls/polling, not a durable queue;
-partial staging/indexing results need explicit rerun and reconciliation. Keep
+recovery. The Function synchronously stages bytes and returns `202`; native indexing
+is asynchronous and scheduled, not a durable application queue. Blob HEAD metadata
+and ETag, fresh indexer success and associated children must precede live acceptance.
+Partial creation/staging/indexing needs exact-state reconciliation. Keep
 dependency/API/model updates reviewed as described in [automation.md](automation.md).
+
+Azure Search, not the Function, executes native CU semantic 500-token/zero-overlap
+chunking with `gpt-5.2`, images/location metadata, 3072-dimensional embeddings and
+child projections. Manual Blob staging can exercise this pipeline without the
+Function. Record that native-indexer Blob proof separately from actual SharePoint
+fetch/permissions and the intended cross-region ingestion run. Preserve original
+URL metadata on staged blobs; citations remain staged-blob URLs, not SharePoint ACL proof.
 
 ## Appendix: Transport recovery
 

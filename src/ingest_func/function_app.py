@@ -1,4 +1,4 @@
-"""Authorized SharePoint/fixture -> private blob -> CU -> private Search ingestion."""
+"""Authorized SharePoint/fixture raw-byte staging for native knowledge-source ingestion."""
 
 import hashlib
 import json
@@ -26,17 +26,12 @@ from synthetic_fixture import fixture_pdf
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
 GRAPH_SCOPE = "https://graph.microsoft.com/.default"
-COGNITIVE_SCOPE = "https://cognitiveservices.azure.com/.default"
-SEARCH_SCOPE = "https://search.azure.com/.default"
-CU_API_VERSION = "2025-11-01"
-SEARCH_API_VERSION = "2024-07-01"
 MAX_REQUEST_BYTES = 4096
 MAX_RESULT_BYTES = 10 * 1024 * 1024
-MAX_CONTENT_BYTES = 2 * 1024 * 1024
 MAX_ATTEMPTS = 3
 MAX_RETRY_AFTER = 10.0
 RETRYABLE = {429, 500, 502, 503, 504}
-MEDIA_TYPES = {".pdf": "application/pdf", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
+MEDIA_TYPES = {".pdf": "application/pdf", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".txt": "text/plain"}
 
 _credential = DefaultAzureCredential()
 
@@ -144,17 +139,37 @@ def _source_id(kind: str, hostname: str, site_path: str, file_path: str) -> str:
     return hashlib.sha256(identity.encode("utf-8")).hexdigest()
 
 
-def _validate_document(data: bytes, title: str, media_type: str, max_bytes: int) -> None:
+def _document_media_type(title: str, media_type: str) -> str:
     extension = PurePosixPath(title).suffix.lower()
     expected = MEDIA_TYPES.get(extension)
+    if expected == "text/plain" and isinstance(media_type, str):
+        media_type = media_type.strip(" \t").lower()
+        if re.fullmatch(r'text/plain(?:[ \t]*;[ \t]*charset[ \t]*=[ \t]*(?:utf-?8|"utf-?8"))?', media_type):
+            media_type = expected
     if not expected or media_type not in (expected, "application/octet-stream"):
         raise IngestionError("unsupported_document_type", 415)
+    return expected
+
+
+def _validate_document(data: bytes, title: str, media_type: str, max_bytes: int) -> None:
+    expected = _document_media_type(title, media_type)
     if not data:
         raise IngestionError("empty_document", 422)
     if len(data) > max_bytes:
         raise IngestionError("document_too_large", 413)
+    if expected == "text/plain":
+        try:
+            text = data.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            raise IngestionError("invalid_document_type", 415) from None
+        if any(unicodedata.category(char) == "Cc" and char not in "\t\r\n" for char in text):
+            raise IngestionError("invalid_document_type", 415)
+        if not text.strip():
+            raise IngestionError("empty_document", 422)
+        return
     signatures = {"application/pdf": b"%PDF-", "image/png": b"\x89PNG\r\n\x1a\n", "image/jpeg": b"\xff\xd8\xff"}
-    if not data.startswith(signatures[expected]):
+    signature = signatures.get(expected)
+    if signature is None or not data.startswith(signature):
         raise IngestionError("invalid_document_type", 415)
 
 
@@ -168,7 +183,10 @@ def _fetch_sharepoint_file(max_bytes: int, request_id: str) -> tuple[bytes, str,
     if PurePosixPath(title).suffix.lower() not in MEDIA_TYPES:
         raise IngestionError("unsupported_document_type", 415)
     headers = {"Authorization": f"Bearer {_token(GRAPH_SCOPE)}"}
-    with _request("GET", f"https://graph.microsoft.com/v1.0/sites/{hostname}:{quote(site_path, safe='/')}", "graph", request_id, headers=headers) as response:
+    site_url = f"https://graph.microsoft.com/v1.0/sites/{hostname}"
+    if site_path != "/":
+        site_url += f":{quote(site_path, safe='/')}"
+    with _request("GET", site_url, "graph", request_id, headers=headers) as response:
         site_id = _read_json(response)["id"]
     item_url = f"https://graph.microsoft.com/v1.0/sites/{quote(site_id, safe=',')}/drive/root:/{quote(file_path, safe='/')}"
     with _request("GET", item_url, "graph", request_id, headers=headers) as response:
@@ -182,8 +200,7 @@ def _fetch_sharepoint_file(max_bytes: int, request_id: str) -> tuple[bytes, str,
     if urlsplit(source_url).query:
         raise IngestionError("invalid_source_metadata", 502)
     media_type = item["file"].get("mimeType", "")
-    if media_type not in (MEDIA_TYPES[PurePosixPath(title).suffix.lower()], "application/octet-stream"):
-        raise IngestionError("unsupported_document_type", 415)
+    _document_media_type(title, media_type)
     with _request("GET", f"{item_url}:/content", "graph", request_id, headers=headers) as response:
         if response.status_code == 302:
             download_url = _scoped_url(response.headers.get("Location", ""), hostname)
@@ -217,9 +234,9 @@ def _blob_call(operation: Any, already_exists: str | None = None) -> None:
             time.sleep(_retry_delay({}, attempt))
 
 
-def _stage_to_blob(data: bytes, title: str, source_id: str, content_hash: str, request_id: str) -> None:
+def _stage_to_blob(data: bytes, title: str, source_id: str, content_hash: str, source_url: str, request_id: str) -> tuple[str, str]:
     container = os.environ.get("STAGING_CONTAINER", "spo-staging")
-    name = f"{source_id}/{content_hash}{PurePosixPath(title).suffix.lower()}"
+    name = f"native/{source_id}/source{PurePosixPath(title).suffix.lower()}"
     with BlobServiceClient(
         account_url=_endpoint("STAGING_BLOB_ENDPOINT"), credential=_credential,
         retry_total=0, connection_timeout=5, read_timeout=30,
@@ -227,73 +244,11 @@ def _stage_to_blob(data: bytes, title: str, source_id: str, content_hash: str, r
         _blob_call(lambda: client.create_container(container, timeout=30, client_request_id=request_id), "ContainerAlreadyExists")
         blob = client.get_blob_client(container, name)
         _blob_call(lambda: blob.upload_blob(
-            data, overwrite=False, timeout=30, client_request_id=request_id,
+            data, overwrite=True, timeout=30, client_request_id=request_id,
             content_settings=ContentSettings(content_type=MEDIA_TYPES[PurePosixPath(title).suffix.lower()]),
-            metadata={"source_id": source_id, "content_hash": content_hash},
-        ), "BlobAlreadyExists")
-
-
-def _analyze(data: bytes, request_id: str) -> dict[str, Any]:
-    endpoint = _endpoint("CU_ENDPOINT")
-    analyzer = quote(os.environ.get("CU_ANALYZER_ID", "prebuilt-document"), safe="")
-    url = f"{endpoint}/contentunderstanding/analyzers/{analyzer}:analyzeBinary?api-version={CU_API_VERSION}"
-    with _request("POST", url, "cu", request_id, headers={"Authorization": f"Bearer {_token(COGNITIVE_SCOPE)}", "Content-Type": "application/octet-stream"}, data=data) as response:
-        if response.status_code not in (200, 202):
-            raise IngestionError("invalid_cu_response", 502)
-        operation_url = response.headers.get("Operation-Location")
-        if not operation_url:
-            return _read_json(response)
-        delay = _retry_delay(response.headers, 0)
-    _scoped_url(operation_url, urlsplit(endpoint).hostname or "")
-    if not urlsplit(operation_url).path.startswith("/contentunderstanding/"):
-        raise IngestionError("invalid_cu_operation", 502)
-    deadline = time.monotonic() + 180
-    for _attempt in range(40):
-        if time.monotonic() + delay >= deadline:
-            break
-        time.sleep(delay)
-        with _request("GET", operation_url, "cu", request_id, headers={"Authorization": f"Bearer {_token(COGNITIVE_SCOPE)}"}) as response:
-            body = _read_json(response)
-            delay = _retry_delay(response.headers, 1)
-        status = str(body.get("status", "")).lower()
-        if status == "succeeded":
-            return body
-        if status not in ("running", "notstarted"):
-            raise IngestionError("cu_analysis_failed", 502)
-    raise IngestionError("cu_timeout", 504)
-
-
-def _extract_markdown(result: dict[str, Any]) -> str:
-    if "status" in result and str(result["status"]).lower() != "succeeded":
-        raise IngestionError("cu_analysis_failed", 502)
-    extracted = result.get("result", {})
-    if not isinstance(extracted, dict):
-        raise IngestionError("invalid_cu_result", 502)
-    contents = extracted.get("contents", [])
-    if not isinstance(contents, list):
-        raise IngestionError("invalid_cu_result", 502)
-    markdown = "\n\n".join(item["markdown"].strip() for item in contents if isinstance(item, dict) and isinstance(item.get("markdown"), str) and item["markdown"].strip())
-    if not markdown:
-        raise IngestionError("empty_extraction", 422)
-    if len(markdown.encode("utf-8")) > MAX_CONTENT_BYTES:
-        raise IngestionError("extraction_too_large", 413)
-    return markdown
-
-
-def _push_to_search(document: dict[str, str], request_id: str) -> None:
-    endpoint = _endpoint("SEARCH_ENDPOINT")
-    index = quote(os.environ.get("SEARCH_INDEX", "spo-docs"), safe="")
-    with _request(
-        "POST", f"{endpoint}/indexes/{index}/docs/index?api-version={SEARCH_API_VERSION}", "search", request_id,
-        headers={"Authorization": f"Bearer {_token(SEARCH_SCOPE)}"},
-        json={"value": [{"@search.action": "mergeOrUpload", **document}]},
-    ) as response:
-        results = _read_json(response).get("value")
-    if not isinstance(results, list) or len(results) != 1 or not isinstance(results[0], dict):
-        raise IngestionError("invalid_search_response", 502)
-    item = results[0]
-    if item.get("key") != document["id"] or item.get("status") is not True or item.get("statusCode") not in (200, 201):
-        raise IngestionError("search_item_failed", 502)
+            metadata={"source_id": source_id, "content_hash": content_hash, "doc_url": quote(source_url, safe=":/%")},
+        ))
+        return blob.url, name
 
 
 def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -350,13 +305,13 @@ def ingest(req: func.HttpRequest) -> func.HttpResponse:
         _validate_document(data, title, media_type, max_bytes)
         content_hash = hashlib.sha256(data).hexdigest()
         stage = "staging"
-        _stage_to_blob(data, title, source_id, content_hash, request_id)
-        stage = "analysis"
-        markdown = _extract_markdown(_analyze(data, request_id))
-        stage = "indexing"
-        _push_to_search({"id": source_id, "title": title, "content": markdown, "source_url": source_url, "source_id": source_id, "content_hash": content_hash}, request_id)
-        result = {"request_id": request_id, "status": "indexed", "document_id": source_id, "source_id": source_id, "content_hash": content_hash, "bytes": len(data), "markdownChars": len(markdown)}
-        status = 200
+        blob_url, blob_name = _stage_to_blob(data, title, source_id, content_hash, source_url, request_id)
+        result = {
+            "request_id": request_id, "status": "staged", "source_id": source_id,
+            "content_hash": content_hash, "source_url": source_url,
+            "blob_url": blob_url, "blob_name": blob_name, "bytes": len(data), "mode": mode,
+        }
+        status = 202
     except IngestionError as error:
         result = {"request_id": request_id, "error": {"code": error.code, "stage": stage}}
         status = error.status

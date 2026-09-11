@@ -48,14 +48,28 @@ def validate_output(value: Any) -> None:
         if isinstance(item, dict):
             item = cast(dict[str, Any], item)
             return any(has_content(item[key]) for key in (
-                "answer", "content", "text", "value", "results", "documents", "response",
+                "answer", "content", "text", "snippet", "value", "results", "documents", "response",
                 "output", "structuredContent", "data",
             ) if key in item)
         return False
 
+    def has_source(item: Any, reference: bool = False) -> bool:
+        item = decode(item)
+        if isinstance(item, list):
+            return any(has_source(child, reference) for child in cast(list[Any], item))
+        if not isinstance(item, dict):
+            return False
+        item = cast(dict[str, Any], item)
+        identity_keys = ("document_id", "docKey", "source_id", "url", "source_url", "web_url", "webUrl",
+                         "snippet_id", "snippet_parent_id", "doc_url")
+        if not reference and not isinstance(item.get("sourceData"), dict):
+            identity_keys += ("id",)
+        return (any(isinstance(item.get(key), str) and item[key].strip() for key in identity_keys)
+                or any(has_source(child, key == "references") for key, child in item.items()))
+
     check_errors(value)
-    if not has_content(value):
-        raise ValueError("A required tool returned no usable content.")
+    if not has_content(value) or not has_source(value):
+        raise ValueError("A required tool returned no usable content with source references.")
 
 
 def validate_response(response: Any, question: str, search_tool_name: str) -> tuple[list[str], str]:

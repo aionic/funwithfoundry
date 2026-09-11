@@ -18,6 +18,16 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+function Test-NativeSearchToolbox {
+    param($Toolbox, [string]$ConnectionId, [string]$ConnectionName)
+    $tools = @($Toolbox.version.tools | Where-Object { $null -ne $_ })
+    $indexes = @($tools | ForEach-Object { $_.azure_ai_search.indexes } | Where-Object { $null -ne $_ })
+    if ($tools.Count -ne 1 -or $indexes.Count -ne 1) { return $false }
+    return $tools[0].type -ceq 'azure_ai_search' -and $tools[0].name -ceq $ConnectionName -and
+        $indexes[0].project_connection_id -ceq $ConnectionId -and $indexes[0].index_name -ceq 'spo-native-index' -and
+        $indexes[0].query_type -ceq 'vector_semantic_hybrid' -and $indexes[0].top_k -eq 5
+}
+
 function Invoke-Azd {
     param([string[]]$CliArguments)
     $logDirectory = Join-Path (Get-Location) '.azure\native-diagnostics'
@@ -86,7 +96,7 @@ Invoke-Azd @('env', 'set', 'FOUNDRY_PROJECT_ENDPOINT', $ProjectEndpoint) | Out-N
 Invoke-Azd @('env', 'set', 'AZURE_AI_MODEL_DEPLOYMENT_NAME', $ModelDeployment) | Out-Null
 Invoke-Azd @('env', 'set', 'SEARCH_ENDPOINT', $SearchEndpoint) | Out-Null
 Invoke-Azd @('env', 'set', 'SEARCH_CONNECTION_NAME', $SearchConnectionName) | Out-Null
-Invoke-Azd @('env', 'set', 'FOUNDRY_IQ_KNOWLEDGE_BASE', 'spo-knowledge-base') | Out-Null
+Invoke-Azd @('env', 'set', 'FOUNDRY_IQ_KNOWLEDGE_BASE', 'spo-native-knowledge-base') | Out-Null
 
 $connections = Invoke-Azd @('ai', 'connection', 'list', '--project-endpoint', $ProjectEndpoint, '--output', 'json') | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0) { throw 'Unable to list Foundry project connections.' }
@@ -104,14 +114,7 @@ if ($toolboxes | Where-Object name -eq 'foundry-rag') {
 }
 
 $searchConnectionId = "$($ProjectId.TrimEnd('/'))/connections/$SearchConnectionName"
-$tools = @($toolbox.version.tools | Where-Object { $null -ne $_ })
-$indexes = @($tools | ForEach-Object { $_.azure_ai_search.indexes } | Where-Object { $null -ne $_ })
-$matches = $tools.Count -eq 1 -and $indexes.Count -eq 1
-if ($matches) {
-    $matches = $tools[0].type -eq 'azure_ai_search' -and $tools[0].name -eq $SearchConnectionName -and
-        $indexes[0].project_connection_id -eq $searchConnectionId -and $indexes[0].index_name -eq 'spo-docs' -and
-        $indexes[0].query_type -eq 'simple' -and $indexes[0].top_k -eq 5
-}
+$matches = Test-NativeSearchToolbox $toolbox $searchConnectionId $SearchConnectionName
 if (-not $matches) {
     $toolboxTemplate = Get-Content (Join-Path $PSScriptRoot '..\toolbox.yaml') -Raw
     $toolboxDefinition = $toolboxTemplate.Replace('__SEARCH_CONNECTION_NAME__', $SearchConnectionName).Replace('__SEARCH_CONNECTION_ID__', $searchConnectionId)
@@ -139,6 +142,9 @@ if (-not $matches) {
 
 $toolbox = Invoke-Azd @('ai', 'toolbox', 'show', 'foundry-rag', '--project-endpoint', $ProjectEndpoint, '--output', 'json') | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0 -or -not $toolbox.endpoint) { throw 'Unable to resolve the toolbox endpoint.' }
+if (-not (Test-NativeSearchToolbox $toolbox $searchConnectionId $SearchConnectionName)) {
+    throw 'Native toolbox readback must match the configured Search connection, spo-native-index, and vector_semantic_hybrid.'
+}
 
 Invoke-Azd @('deploy', 'funwithfoundry-rag-agent', '--environment', $EnvironmentName, '--no-prompt')
 if ($LASTEXITCODE -ne 0) { throw 'Native Foundry agent deployment failed.' }

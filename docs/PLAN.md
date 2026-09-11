@@ -1,11 +1,10 @@
 # funwithfoundry - private Foundry lab (Central US + South Central US over secured vWAN)
 
-**Implementation status:** Deployed and verified on 2026-09-09. Use the [README](../README.md)
-for deployment commands and [architecture](architecture.md) for the current proof matrix and
-diagram links. This file preserves design decisions, constraints, and residual risks.
-
-> Persisted here because VS Code repo memory requires the folder to be open as a workspace.
-> Once `d:\git\funwithfoundry` is opened as the workspace, mirror this into `/memories/repo/`.
+**Historical custom-ingestion plan, 2026-09-09:** the deployment and verification
+statements below describe that revision, not the current Search-owned native
+pipeline. Use [deployment](deployment.md) for current commands and
+[architecture](architecture.md) for the current evidence matrix and diagram context.
+This file preserves the earlier design decisions, constraints and residual risks.
 
 ## What this is
 

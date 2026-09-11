@@ -9,6 +9,14 @@ deployment ordering and trust boundaries. See [TESTING.md](TESTING.md) for local
 setup and commands, [VALIDATION.md](VALIDATION.md) for dated acceptance and hosted
 CI evidence, and [STATUS.md](STATUS.md) for status and history.
 
+As of 2026-09-11, the explicit S1 native-indexer pipeline passed the full local
+release gate, fixture-backed live acceptance and repeated normal Verify without
+agent redeployment. The existing lab used manual migration/recovery; a clean full
+orchestrator run and deletion acceptance remain unproven. Actual SharePoint
+integration is deferred because no sample is available, not considered passed.
+[Native ingestion](native-ingestion.md) is the ownership/migration guide,
+not a second work-tracking plan; ongoing work stays in Beads.
+
 ## Local checks
 
 The current [Test-Repository.ps1](../scripts/Test-Repository.ps1) is cloud-free: it
@@ -21,14 +29,22 @@ Use the committed documentation dependencies and npm lockfile, not unpinned down
 
 The harness parses PowerShell, checks Python syntax, runs the ingestion/retrieval/schema
 tests and PowerShell mock guards. `-Terraform` adds formatting, validation in a
-temporary backend-disabled copy and mocked ingestion-auth tests. `-Release` requires
+temporary backend-disabled copy and mocked root native and ingestion-auth tests.
+Require nonempty Terraform test discovery; a filtered run with no tests is not
+validation. Keep prior Windows `Join-Path` recovery evidence historical. `-Release` requires
 documentation tools and rejects skipped tests. `-Quick` is syntax-only; it is useful
 feedback but not a release gate. Do not describe a skipped optional check as passed.
 
 The focused regression surface covers first/matching toolbox deployment,
 public 200 versus auth/network denial, the 62/63-character subnet boundary, ingestion
-auth/input/JSON/identity checks, per-document indexing failure and either retrieval
-branch failing. There is no broad supported-Python matrix implied by these tests.
+auth/input/JSON/identity checks, staging-only receipts, native contract mismatch
+refusal, fresh indexer/child/provenance verification and either retrieval branch
+failing. [Test-NativeKnowledgeSource.ps1](../tests/Test-NativeKnowledgeSource.ps1),
+[Test-NativeIngestion.ps1](../tests/Test-NativeIngestion.ps1) and
+[Test-NativePrivateLinks.ps1](../tests/Test-NativePrivateLinks.ps1) are focused
+regression entrypoints; dated full-gate results are in the
+[current validation record](VALIDATION.md#current-native-follow-up).
+There is no broad supported-Python matrix implied by these tests.
 Terraform provider/package downloads need network access; that is distinct from an
 Azure deployment or data-plane call.
 
@@ -48,8 +64,8 @@ for the management path and the separate live acceptance gate.
 ### Recorded local evidence
 
 The dated [validation record](VALIDATION.md) and [status record](STATUS.md) separate
-the completed local release gate, hosted Windows/Linux/secret-scan baseline and
-live acceptance. Use those records for results and recovery boundaries, not copied
+the current native local/live acceptance from historical hosted CI and
+custom-pipeline acceptance. Use those records for results and recovery boundaries, not copied
 test totals. Local transport guards exercise integrity, exact scope, temporary
 access and cleanup failures; they are not live end-to-end scenarios. Artifact
 delivery, cleanup, fresh-VM installation and workload acceptance require distinct proof.
@@ -63,6 +79,9 @@ For a documentation-only edit, use the installed linter and repository configura
 Adjust the file list to the changed Markdown files. Scoped lint is not the full
 release gate, local-link validation or cloud acceptance. Follow
 [TESTING.md](TESTING.md#choose-a-validation-level) for the appropriate validation level.
+Validate local links with a parser using Node or configured documentation tooling.
+Record actual test/link counts from the current run. Scoped documentation checks
+do not require diagram renders, Python runtime suites or cloud checks.
 
 ### Why hooks are advisory
 
@@ -106,6 +125,12 @@ The [Invoke-Accelerator.ps1](../scripts/Invoke-Accelerator.ps1) implements
 stages, not interchangeable
 Git hooks or independent jobs that can race each other.
 
+The native Workload ordering requirement is **publish Function, stage fixture,
+initialize Knowledge, then bind/verify native retrieval**, including runtime RBAC
+before Verify. Manual migration/recovery and repeated normal Verify passed; that
+does not certify a clean full orchestrator run. Consult actual parameters and do
+not invent new stage flags.
+
 The current source requires explicit subscription scope and a reviewed tool manifest
 for private workload setup. Its resume state and native-runtime variable file are
 under the ignored azd accelerator directory; plans there remain sensitive. Source
@@ -120,14 +145,39 @@ artifact delivery does not by itself prove installer or workload readiness.
 | --- | --- | --- |
 | Preflight | Run context/tool/capacity checks; separately confirm tenant authority, policy and runner readiness | Any missing/unknown prerequisite; ARM preflight cannot prove Entra rights |
 | Infrastructure | Account injection must precede account host, and account host must precede full project-host graph | Failed or unresolved readiness; no blind retry of unknown create outcomes |
-| Workload | Private runner and connections must exist before package/index/IQ/toolbox/agent setup; runtime identity must be discovered before its final RBAC | Missing bootstrap, package health, immutable toolbox selection or role evidence |
-| Verify | Validate the actual deployed graph and new Function/native runtime, not historical smoke evidence | Any failed/inconclusive required check; optional SharePoint remains explicitly blocked/not tested |
+| Workload | Review S1 eligibility/UAMI and approve three secondary dependency links; publish staging Function, stage fixture, initialize six explicit native definitions, bind toolbox/agent, reconcile runtime RBAC | Missing approval, staged receipt, definition match, immutable toolbox selection or role evidence; no automatic update/migration/delete |
+| Verify | Run authorization probes, initialize with guarded receipt refresh, then verify blob provenance, fresh indexer execution, child chunks and current IQ/native calls | Staging/configuration success alone, stale/custom-index evidence or any failed required check |
 
 Serialize changes to each Terraform state and azd environment. Preserve machine-readable
 stage results and package/version hashes, but not secrets. A resumable workflow must
 read back unknown outcomes and compare desired definitions; it must not blindly create
 another toolbox, principal or resource. See [deployment.md](deployment.md) for current
 commands and [operations.md](operations.md) for rollback and cleanup.
+
+The PowerShell initializer owns all six definitions; its Python launcher delegates
+to it. Contract version 2, owner `accelerator-native-indexer`, supplies
+`spo-native-datasource`, `spo-native-index`, `spo-native-skillset`,
+`spo-native-indexer`, `spo-native` (kind `searchIndex`) and
+`spo-native-knowledge-base`. It validates all existing definitions before creating
+missing ones with `If-None-Match: *`; it refuses mismatches, including a legacy
+`azureBlob` KS. It does not delete, explicitly run/wait for indexing or roll back
+partial creation. Datasource-only reviewed rebind and guarded stale-ETag refresh
+are the conditional-write exceptions; matching receipts stay read-only and HTTP
+412 is not retried. See [receipt gates](native-ingestion.md#datasource-receipt-and-resume).
+Creating an enabled indexer does start native indexing.
+
+The private indexer uses Azure-executed CU semantic 500-token/zero-overlap chunks
+with `gpt-5.2`, images/location, 3072-dimensional embeddings and child projections.
+S1 support requires the documented service creation-date and high-capacity-region
+prerequisites; the generated private Blob KS S2 path is not used. The same UAMI,
+three secondary shared private links and primary planner path are preserved.
+Never repoint bindings to another sample's IDs or weaken security/contract checks.
+
+Function `202 staged` receipts and manual Blob staging are inputs to native-indexer
+Blob tests, not SharePoint acceptance. Prove the actual SharePoint fetch/permissions
+and cross-region flow separately. Original source URL metadata stays on the blob;
+child citations use the staged blob URL. The current fixture-backed full-gate and
+live results are recorded in [VALIDATION.md](VALIDATION.md#current-native-follow-up).
 
 ### OIDC and private runner trust
 
@@ -181,8 +231,11 @@ of any deployment or release approval.
 
 ## Diagram validation
 
-Authoritative files and approval records are in [docs/diagrams](diagrams). The
-repository pins `@mermaid-js/mermaid-cli@11.12.0`. The renderer's non-writing
+Original custom-ingestion files and approval records are in [docs/diagrams](diagrams).
+They are **historical**, retained unchanged, and do not describe native KS ownership.
+Before any replacement is authored/rendered, review a new contract for ownership,
+UAMI/private links, child/staged-blob provenance and failure gates. The repository
+pins `@mermaid-js/mermaid-cli@11.12.0`. The renderer's non-writing
 verification mode is:
 
 ```powershell

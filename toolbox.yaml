@@ -1,13 +1,13 @@
 name: foundry-rag
-description: Private Azure AI Search grounding tools for the funwithfoundry hosted agent.
+description: Private grounding through the spo-native Blob knowledge source generated index and query-time vectorizer.
 tools:
   - type: azure_ai_search
     name: __SEARCH_CONNECTION_NAME__
     azure_ai_search:
       indexes:
         - project_connection_id: __SEARCH_CONNECTION_ID__
-          index_name: spo-docs
-          query_type: simple
+          index_name: spo-native-index
+          query_type: vector_semantic_hybrid
           top_k: 5
 metadata:
   authentication: AAD

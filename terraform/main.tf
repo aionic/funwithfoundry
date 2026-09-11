@@ -99,6 +99,11 @@ module "foundry_primary" {
   dns_zone_ids               = module.private_dns.zone_ids
   operator_object_id         = local.operator_object_id
 
+  search_sku = var.search_sku
+  search_user_assigned_identity_ids = {
+    native_ingestion = azurerm_user_assigned_identity.search_ingestion.id
+  }
+
   tags = local.tags
 }
 
@@ -117,8 +122,6 @@ module "foundry_secondary" {
   tags = local.tags
 }
 
-# Sits in the secondary spoke next to Content Understanding. The Graph fetch egresses
-# through the firewall; every hop after it stays on private endpoints.
 module "ingest_function" {
   source = "./modules/ingest-function"
 
@@ -137,12 +140,6 @@ module "ingest_function" {
 
   staging_storage_id    = module.foundry_secondary.staging_storage_id
   staging_blob_endpoint = module.foundry_secondary.staging_blob_endpoint
-
-  content_understanding_account_id = module.foundry_secondary.foundry_id
-  content_understanding_endpoint   = module.foundry_secondary.endpoint
-
-  search_id       = module.foundry_primary.search_id
-  search_endpoint = module.foundry_primary.search_endpoint
 
   sharepoint_hostname  = var.sharepoint_hostname
   sharepoint_site_path = var.sharepoint_site_path

@@ -2,9 +2,19 @@
 
 ## Scope and evidence
 
+**Validated baseline, 2026-09-11:** the explicit S1 native-indexer pipeline passed
+the full local release gate, live fixture-backed acceptance and two normal Verify
+runs. This validates the existing lab combination, not a clean full orchestrator
+run or deletion acceptance. Actual SharePoint integration is deferred because no
+sample is available; the accepted structure does not prove access or grant consent. See
+[native ingestion](native-ingestion.md) for ownership, eligibility and recovery.
+
 The component locks and runtime declarations below describe the reference baseline.
+The 2026-09-11 publication check also passed with workstation Terraform 1.16.2;
+the existing CI pin remains 1.15.8. No dependency pins changed during doc cleanup.
 [VALIDATION.md](VALIDATION.md) records its 2026-09-10 local, hosted CI and live rebuild
-acceptance separately. Dependency pins, API dates and service lifecycle are different
+acceptance for the historical custom-ingestion implementation separately.
+Dependency pins, API dates and service lifecycle are different
 kinds of evidence; success on that baseline does not certify every allowed version
 or a new environment. Use [TESTING.md](TESTING.md) to validate a change.
 
@@ -24,10 +34,10 @@ documentation-tool updates below do not change or redeploy the accepted runtime 
 | Native lock: SDK/hosting | `langchain-azure-ai==1.2.9`, `azure-ai-projects==2.4.0`, `azure-identity==1.25.3`, `httpx==0.28.1`, stable `pydantic==2.13.5` | Recorded hosted execution passed; not proof for later SDK versions |
 | Native lock: orchestration | `langgraph==1.2.11`, `langchain-core==1.6.2`, `langchain-openai==1.6.1`, `langchain-mcp-adapters==0.3.2`, `mcp==1.30.0`, `openai==2.54.0` | Not a broad cross-version support matrix |
 | Responses client lock | `azure-identity==1.25.3`, `httpx==0.28.1`, plus hashed transitives; CI selects Python `3.13.7` | No independent deployed runtime pin |
-| IQ setup helper | Imports `azure.identity` and `requests`; reads shared index JSON | No dedicated runtime/dependency lock in the helper; retain the full source layout |
+| IQ setup helper | Python standard-library launcher delegates to the canonical PowerShell initializer and shared contracts | Requires PowerShell 5.1/7 on Windows or 7 elsewhere and private-runner IMDS; no independent SDK writer or interactive-login fallback |
 | Windows jumpbox | Windows Server image uses `version = "latest"` in [main.tf](../terraform/modules/jumpbox-bastion/main.tf) | Recorded image bootstrap passed; future images are not immutable |
 | Runner tools | Reviewed manifest: azd `1.33.0`, uv `0.8.13`, Python `3.13.7`, eight pinned extensions; official artifact verification | Private bootstrap passed in the recorded rebuild; new VMs require read-back |
-| Diagram tooling | `@mermaid-js/mermaid-cli` `11.12.0` in [.github/package.json](../.github/package.json) | Contracts approved; two 3840 x 2160 PNGs reproduced, inventoried and visually inspected; not cloud evidence |
+| Diagram tooling | `@mermaid-js/mermaid-cli` `11.12.0` in [.github/package.json](../.github/package.json) | Original custom-ingestion contracts/PNGs are historical and unchanged; native semantics require new approval before authoring/rendering |
 | Markdown tooling | `markdownlint-cli2` `0.18.1` in [.github/package.json](../.github/package.json) | Verify Node engine and resolved dependency compatibility in CI |
 | Python documentation tools | `yamllint==1.38.0`, `markdown-it-py==4.2.0` in [.github/requirements.txt](../.github/requirements.txt) | Local documentation checks use a separate environment; not deployed runtime dependencies |
 
@@ -91,24 +101,58 @@ do not infer installer or runtime success from artifact delivery alone.
 | --- | --- | --- |
 | IQ planner model | `gpt-5.2`, version `2025-12-11`, capacity `50` | Module default, not current quota/availability proof |
 | Hosted answer model | `gpt-4o`, version `2024-11-20`, capacity `50` | Current agent-model default; selected deployment is configuration |
-| Embedding deployment | `text-embedding-3-large`, version `1`, capacity `50` | Provisioned default, but current text-only index does not use vectors |
+| Native ingestion models | Secondary `gpt-5.2` and `text-embedding-3-large`, explicit 3072 dimensions | Live fixture pipeline passed; dimensions verified by schema/query pipeline, not retrievable vector arrays |
 | Model SKU | `GlobalStandard` | Processing not pinned to either resource region |
 | Foundry account/project/connection ARM resources | `2025-06-01` | ARM schema dates, not runtime protocol versions |
 | Project capability-host ARM resource | `2025-04-01-preview` | Preview API surface; do not infer all Foundry services are preview |
 | Cosmos project-connection metadata | `2025-05-01-preview` | Connection metadata field, not a blanket Cosmos service lifecycle claim |
-| Search shared private link ARM resource | `2025-05-01`, group `openai_account` | Must be approved and paired with Search MI model access |
-| Search index/data API | `2024-07-01` | Used by canonical setup and ingestion indexing |
-| Search knowledge sources/bases and IQ retrieve | `2026-05-01-preview` | Preview API; request shape is version-specific |
-| Content Understanding data API | `2025-11-01`, `prebuilt-document` analyzer default | Live capacity, availability and document support still need validation |
-| Toolbox | One versioned read-only Search tool, `query_type: simple`, `top_k: 5` | No vector query, unrestricted tools or automatic version-upgrade assumption |
+| Search tier | Root `search_sku = standard` (S1); accepts `standard`, `standard2`, `standard3` | Live Central US S1 fixture path passed; other services still require creation-date eligibility and a high-capacity region for embeddings |
+| Search shared private link ARM resource | `2025-05-01`; existing primary `openai_account` plus secondary `blob`, `foundry_account`, `openai_account` | Preserve primary planner MI/link; separately approve new UAMI/dependency access |
+| Native definitions and read-back | `2026-08-01-preview`, contract version 2, owner `accelerator-native-indexer`, `searchIndex` KS, private indexer execution, `PT5M` | Six explicit definitions; create only missing ones, refuse existing mismatches; enabled indexer runs on creation |
+| Agent IQ retrieve | `2026-05-01-preview` in the current agent source | Distinct from setup/read-back API; live retrieval against `spo-native-knowledge-base` passed |
+| Native Content Understanding | Explicit built-in CU skill, images/location metadata, semantic tokens 500/0, secondary `gpt-5.2` | Azure Search executes the fixture-validated pipeline; images/location quality remains unproven |
+| Toolbox | One versioned read-only Search tool, `query_type: vector_semantic_hybrid`, `top_k: 5`, `spo-native-index` | Live strict dual retrieval passed on toolbox 2; no automatic version upgrade or relevance benchmark implied |
 
 Model defaults are in [variables.tf](../terraform/modules/foundry-agent-private/variables.tf).
-API constants are in [New-FoundryIqKnowledgeBase.py](../scripts/New-FoundryIqKnowledgeBase.py),
-[function_app.py](../src/ingest_func/function_app.py) and
-[main.py](../src/foundry_native_agent/main.py). The canonical
-[search-index.json](../src/shared/search-index.json) contains `id`, `title`, `content`,
-`source_url`, `source_id`, `content_hash` and a semantic configuration, not vector fields.
-Retain one schema writer/definition and its packaged copy contract during deployment.
+Native ingestion settings are in
+[native-ingestion.json](../src/shared/native-ingestion.json) and
+[Initialize-KnowledgeBase.ps1](../scripts/Initialize-KnowledgeBase.ps1); the retrieve
+constant is in [main.py](../src/foundry_native_agent/main.py).
+[search-index.json](../src/shared/search-index.json) supplies index/projection
+creation and validation settings. It requires child snippets/parent identity,
+staged-blob `doc_url` and vectors. The Function preserves original identity/hash
+metadata on the blob, not as guaranteed generated child fields.
+
+Canonical validation accepts any safe embedding output name (for example
+`text_vector`) only with a consistent projection. Omitted/null semantic overlap
+means zero. Projected `doc_url` aliases `/metadata_storage_path` and
+`/document/doc_url` require the exact untransformed indexer mapping
+`metadata_storage_path` to `doc_url`. The final URL remains the staged blob, not
+`originalSource`; retain original-source/hash blob metadata.
+
+The initializer constructs `spo-native-datasource`, `spo-native-index`,
+`spo-native-skillset`, `spo-native-indexer`, the `searchIndex` KS `spo-native` and
+`spo-native-knowledge-base`. CU chunking, embeddings and child projections are
+explicit definitions, not an auto-generated KS template. It validates existing
+definitions before creating missing ones and refuses mismatches. It performs no
+automatic migration/delete; datasource-only reviewed rebind and guarded stale-ETag
+refresh use conditional writes under [receipt gates](native-ingestion.md#datasource-receipt-and-resume).
+Configuration success leaves
+`indexing_verified: false`; an enabled indexer can run without the initializer
+waiting for it. Neither mocks nor historical Function proof establishes live compatibility.
+
+Microsoft documents S1+ for direct private indexers with built-in skills on services
+created after April 3, 2024, with a high-capacity-region requirement for embeddings.
+The current Central US service was created September 9, 2026. The generated private
+`azureBlob` KS S2+ path is not used; its failed S2 quota attempt remains historical.
+See [eligibility guidance](native-ingestion.md#identity-network-and-cost-review).
+The same ingestion UAMI, three secondary shared private links, preserved primary
+planner link and existing security boundaries remain in place.
+
+The Function is staging-only (`202 staged`); manual Blob staging is also possible.
+Both can test native Blob indexing, but only an actual SharePoint-file run can
+establish SharePoint access and the intended cross-region source path. Original URL
+metadata stays on the blob; child citations identify the staged blob, not SharePoint.
 
 ## Lifecycle and known limits
 
@@ -130,7 +174,7 @@ behavior. Do not silently substitute a model/region/SKU or enable public access 
 pass a test. Outbound injection cannot simply be changed in place; a failed setup
 requires exact-state reconciliation, not blind subnet reuse.
 
-First-party references checked for this documentation pass:
+First-party references accessed 2026-09-09:
 
 - [Foundry network isolation](https://learn.microsoft.com/azure/foundry/how-to/configure-private-link)
 - [Model deployment types and processing locations](https://learn.microsoft.com/azure/foundry/foundry-models/concepts/deployment-types)

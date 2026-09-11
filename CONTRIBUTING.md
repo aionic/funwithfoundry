@@ -23,6 +23,68 @@ Preserve both packaging contracts. The native lock keeps stable Pydantic 2.13.5 
 only the required Azure previews in [compatibility.md](docs/compatibility.md);
 do not resolve the whole environment with unrestricted prereleases.
 
+For documentation-only changes, immediately run the installed Markdown linter with
+the repository configuration and the edited file list, then parse local links with
+Node or configured documentation tooling. Avoid Python runtime tests, cloud calls
+and diagram renders when they are outside the approved scope. Record actual counts
+from the checks performed; fixed historic totals are not current test evidence.
+
+## Native ingestion ownership
+
+As of 2026-09-11, the explicit S1 native-indexer pipeline passed the full local
+release gate, live fixture-backed acceptance and two normal Verify runs without
+manual rebind or agent redeployment. Actual SharePoint integration is deferred
+because no sample is available; structure acceptance is neither technical proof
+nor permission approval. A clean full orchestrator run and deletion acceptance
+remain unproven. Follow
+[docs/native-ingestion.md](docs/native-ingestion.md) and track unfinished work in
+Beads `funwithfoundry-1zn`, not new tracking-plan Markdown files.
+
+- The Function owns authorization/source acquisition and stable raw-blob staging,
+    returning HTTP `202`, `status: staged`. Do not restore custom CU/Search calls or roles.
+- Contract version 2, owner `accelerator-native-indexer`, defines
+    `spo-native-datasource`, `spo-native-index`, `spo-native-skillset`,
+    `spo-native-indexer`, `spo-native` (kind `searchIndex`) and
+    `spo-native-knowledge-base`. The initializer validates existing definitions
+    before creating missing ones; Python delegates to it. No automatic migration
+    or delete, including legacy `azureBlob` KS conflicts. Preserve the datasource-only
+    reviewed rebind and guarded stale-ETag refresh exceptions described in
+    [receipt gates](docs/native-ingestion.md#datasource-receipt-and-resume).
+- Semantic 500-token/zero-overlap chunks, images/location extraction with `gpt-5.2`
+    and 3072-dimensional embeddings with child projections are explicit native
+    definitions executed by Azure Search. A mismatch blocks; no custom Function
+    processing or custom-skill fallback. Enabled indexer creation starts indexing;
+    configuration-only success does not certify indexed completion.
+    Any safe embedding output name (such as `text_vector`) requires a consistent
+    projection; omitted/null semantic overlap is zero.
+- Child `doc_url` is the staged blob URL; original `source_id`/hash/URL are blob metadata.
+    Preserve that metadata. Projection aliases `/metadata_storage_path` and
+    `/document/doc_url` require the exact untransformed indexer mapping
+    `metadata_storage_path` to `doc_url`; neither changes the URL to `originalSource`.
+    Tests must distinguish staged receipts and configuration-only success from fresh
+    indexed children and matching IQ/native evidence.
+- Search defaults to S1 (`standard`), also allowing `standard2`/`standard3`.
+    Direct private built-in-skill indexers require service creation after April 3,
+    2024 and a high-capacity region for embeddings; the generated private Blob KS
+    S2 path is not used. Review live eligibility/cost and keep the same ingestion
+    UAMI, three secondary links and primary planner path with unchanged security.
+    Bind only this environment's outputs, never another sample's IDs.
+- A fixture or manually staged blob can test native Blob indexing, not SharePoint
+    connector access or permissions. Actual SharePoint cross-region ingestion
+    requires separate source-fetch, consent, staging, indexing and retrieval proof.
+
+Workload ordering is Function publish, fixture staging, Knowledge,
+native deployment and runtime RBAC before verification. Document actual script
+parameters, not speculative stage flags. The
+[current validation record](docs/VALIDATION.md#current-native-follow-up)
+records the full gate and live correlations; report new focused results separately
+without copying historical totals as newly executed checks.
+
+Original implementation plans and diagram assets are historical custom-ingestion
+records. Preserve them, dated v1 acceptance and failed-S2 recovery evidence. New diagram semantics
+need an explicitly reviewed contract before authoring/rendering; a local refactor
+does not approve replacement artwork or establish a new live baseline.
+
 ## Optional local hook
 
 The single hook configuration is [.pre-commit-config.yaml](.pre-commit-config.yaml). Opt in locally:

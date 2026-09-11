@@ -102,7 +102,7 @@ function Invoke-ReviewedApply {
     $hash = (Get-FileHash -LiteralPath $planPath -Algorithm SHA256).Hash
     if (-not $PSCmdlet.ShouldProcess("$planPath SHA256=$hash", 'Apply the displayed Terraform plan')) { throw 'Terraform plan approval declined.' }
     if ((Get-FileHash -LiteralPath $planPath -Algorithm SHA256).Hash -ne $hash) { throw 'Plan changed after review.' }
-    Invoke-CheckedCommand 'terraform' @("-chdir=$TerraformDir", 'apply', '-input=false', '-no-color', $planPath) | Out-Host
+    Invoke-CheckedCommand 'terraform' @("-chdir=$TerraformDir", 'apply', '-input=false', '-no-color', '-parallelism=1', $planPath) | Out-Host
     @{ plan_sha256 = $hash; status = 'applied' }
 }
 
@@ -131,12 +131,36 @@ function Get-DeploymentManifest {
         planner_model = $model
         function_hostname = $function.hostname
         function_api_client_id = $function.api_client_id
+        native_ingestion = $outputs.native_ingestion.value
     }
     foreach ($key in $manifest.Keys) {
-        if (-not $manifest[$key]) { throw "Missing deployment contract '$key'. Planner values require foundry_primary.planner_deployment and planner_model outputs or explicit parameters." }
+        if ($null -eq $manifest[$key] -or [string]::IsNullOrWhiteSpace([string]$manifest[$key])) { throw "Missing deployment contract '$key'. Planner values require foundry_primary.planner_deployment and planner_model outputs or explicit parameters." }
     }
     if ($manifest.project_id -notlike "/subscriptions/$SubscriptionId/*" -or
         $manifest.account_id -notlike "/subscriptions/$SubscriptionId/*") { throw 'Foundry output ARM scope mismatch.' }
+    $ingestion = $manifest.native_ingestion
+    foreach ($key in @('storage_resource_id', 'storage_endpoint', 'container_name', 'folder_path', 'identity_resource_id',
+        'ai_services_endpoint', 'openai_endpoint', 'chat_deployment', 'chat_model', 'embedding_deployment', 'embedding_model')) {
+        if ($ingestion.$key -isnot [string] -or [string]::IsNullOrWhiteSpace($ingestion.$key)) { throw "Missing native ingestion contract '$key'. Refresh Terraform outputs before Workload." }
+    }
+    $scope = '^/subscriptions/' + [regex]::Escape([string]$SubscriptionId) + '/resourceGroups/[a-zA-Z0-9_.()-]+/providers/'
+    if ($ingestion.storage_resource_id -notmatch ($scope + 'Microsoft\.Storage/storageAccounts/[a-z0-9]{3,24}$') -or
+        $ingestion.identity_resource_id -notmatch ($scope + 'Microsoft\.ManagedIdentity/userAssignedIdentities/[a-zA-Z0-9_-]+$')) { throw 'Native ingestion output ARM scope mismatch.' }
+    $storageName = ($ingestion.storage_resource_id -split '/')[-1]
+    if ($ingestion.storage_endpoint.TrimEnd('/') -cne "https://$storageName.blob.core.windows.net" -or
+        $ingestion.ai_services_endpoint -cnotmatch '^https://[a-zA-Z0-9-]+\.services\.ai\.azure\.com/?$' -or
+        $ingestion.openai_endpoint -cnotmatch '^https://[a-zA-Z0-9-]+\.openai\.azure\.com/?$') { throw 'Invalid native ingestion endpoint contract.' }
+    foreach ($key in @('chat_deployment', 'chat_model', 'embedding_deployment', 'embedding_model')) {
+        if ($ingestion.$key -cnotmatch '^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$') { throw "Invalid native ingestion contract '$key'." }
+    }
+    if ($ingestion.container_name -cnotmatch '^[a-z0-9](?:[a-z0-9]|-(?!-)){1,61}[a-z0-9]$' -or
+        $ingestion.folder_path -cnotmatch '^native/(?:[a-zA-Z0-9_-]+/)*$') { throw 'Invalid native ingestion staging path.' }
+    if (@($ingestion.shared_private_links.PSObject.Properties).Count -ne 3) { throw 'Native ingestion requires exactly three shared private links.' }
+    foreach ($link in $ingestion.shared_private_links.PSObject.Properties) {
+        if ([string]$link.Value.id -notmatch ($scope + 'Microsoft\.Search/searchServices/[^/]+/sharedPrivateLinkResources/[^/]+$') -or
+            [string]$link.Value.target_resource_id -notmatch ($scope + '(Microsoft\.Storage/storageAccounts|Microsoft\.CognitiveServices/accounts)/[^/]+$') -or
+            [string]::IsNullOrWhiteSpace([string]$link.Value.group_id)) { throw "Invalid native ingestion private link scope: $($link.Name)." }
+    }
     $manifest
 }
 
@@ -364,7 +388,7 @@ function Initialize-RunnerTools {
 }
 
 function Invoke-RunnerWorkload {
-    param([ValidateSet('Knowledge', 'Native', 'Verify')][string]$Action)
+    param([ValidateSet('StageFixture', 'Knowledge', 'Native', 'Verify')][string]$Action)
     Invoke-PrivateCommand {
         param($payload)
         $source = $payload.source
@@ -375,10 +399,39 @@ function Invoke-RunnerWorkload {
         $env:AZURE_TENANT_ID = $manifest.tenant_id
         Push-Location $source
         try {
-            if ($payload.action -eq 'Knowledge') {
-                return & .\scripts\Initialize-KnowledgeBase.ps1 -SearchEndpoint $manifest.search_endpoint `
+            $ingestion = $manifest.native_ingestion
+            function Invoke-RunnerKnowledge {
+                $global:LASTEXITCODE = 0
+                $knowledge = & .\scripts\Initialize-KnowledgeBase.ps1 -SearchEndpoint $manifest.search_endpoint `
                     -FoundryOpenAIEndpoint $manifest.openai_endpoint -PlannerDeployment $manifest.planner_deployment `
-                    -PlannerModel $manifest.planner_model -Confirm:$false
+                    -PlannerModel $manifest.planner_model -StorageResourceId $ingestion.storage_resource_id `
+                    -IngestionIdentityResourceId $ingestion.identity_resource_id -IngestionFoundryEndpoint $ingestion.ai_services_endpoint `
+                    -IngestionOpenAIEndpoint $ingestion.openai_endpoint -IngestionChatDeployment $ingestion.chat_deployment `
+                    -IngestionChatModel $ingestion.chat_model -EmbeddingDeployment $ingestion.embedding_deployment `
+                    -EmbeddingModel $ingestion.embedding_model -StagingContainer $ingestion.container_name -FolderPath $ingestion.folder_path `
+                    -RefreshDataSourceBinding -Confirm:$false
+                if ($LASTEXITCODE -ne 0 -or $null -eq $knowledge -or $knowledge -is [array] -or
+                    $knowledge.status -cne 'succeeded' -or $knowledge.knowledge_source -cne 'spo-native' -or
+                    $knowledge.index -cne 'spo-native-index' -or $knowledge.knowledge_base -cne 'spo-native-knowledge-base') {
+                    throw 'ACTION: Native knowledge pipeline configuration did not succeed with the expected resource names. Native deployment and E2E are blocked.'
+                }
+                return $knowledge
+            }
+            if ($payload.action -eq 'StageFixture') {
+                $global:LASTEXITCODE = 0
+                $fixture = & .\scripts\jumpbox\Invoke-IngestFunction.ps1 -FunctionHostname $manifest.function_hostname `
+                    -ApiClientId $manifest.function_api_client_id -Mode fixture -Confirm:$false
+                $expectedPrefix = "$($ingestion.storage_endpoint.TrimEnd('/'))/$($ingestion.container_name)/"
+                if ($LASTEXITCODE -ne 0 -or $fixture.status -cne 'staged' -or $fixture.mode -cne 'fixture' -or
+                    [string]::IsNullOrWhiteSpace([string]$fixture.blob_name) -or
+                    -not ([string]$fixture.blob_name).StartsWith($ingestion.folder_path, [StringComparison]::Ordinal) -or
+                    [string]$fixture.blob_url -cne "$expectedPrefix$($fixture.blob_name)") {
+                    throw 'ACTION: Fixture staging did not match the native storage/container/folder binding. Knowledge setup and native deployment are blocked.'
+                }
+                return $fixture
+            }
+            if ($payload.action -eq 'Knowledge') {
+                return Invoke-RunnerKnowledge
             }
             if ($payload.action -eq 'Verify') {
                 $runtimePython = Join-Path $payload.root "tools\python$($tools.python.version)\python.exe"
@@ -400,12 +453,15 @@ function Invoke-RunnerWorkload {
                 $probeText = & .\scripts\jumpbox\Test-Ingestion.ps1 -FunctionHostname $manifest.function_hostname -ApiClientId $manifest.function_api_client_id -Confirm:$false
                 if ($LASTEXITCODE -ne 0) { throw 'Authorized ingestion probes failed.' }
                 $probes = ($probeText -join "`n") | ConvertFrom-Json
-                if ($probes.status -ne 'passed') { throw 'Authorized ingestion probes did not pass.' }
+                if ($null -eq $probes -or $probes -is [array] -or $probes.status -cne 'passed') { throw 'Authorized ingestion probes did not pass.' }
+                $knowledge = Invoke-RunnerKnowledge
                 $proof = & .\scripts\jumpbox\Invoke-EndToEnd.ps1 -FunctionHostname $manifest.function_hostname `
                     -ApiClientId $manifest.function_api_client_id -SearchEndpoint $manifest.search_endpoint `
                     -ProjectEndpoint $manifest.project_endpoint -SearchToolName $manifest.search_connection `
-                    -ModelDeployment $manifest.agent_model -PythonExecutable $python -Confirm:$false
-                return @{ ingestion = $probes; end_to_end = $proof }
+                    -ModelDeployment $manifest.agent_model -PythonExecutable $python `
+                    -StorageResourceId $ingestion.storage_resource_id -IngestionIdentityResourceId $ingestion.identity_resource_id `
+                    -StagingContainer $ingestion.container_name -Confirm:$false
+                return @{ ingestion = $probes; knowledge = $knowledge; end_to_end = $proof }
             }
             $null = & azd auth login --managed-identity --no-prompt 2>&1
             if ($LASTEXITCODE -ne 0) { throw 'ACTION: azd managed-identity login failed on the runner; no workstation login cache is used.' }
@@ -501,12 +557,12 @@ $statePath = Join-Path $stateDirectory 'state.json'
 $nativeVariablesPath = Join-Path $stateDirectory 'native-agent.auto.tfvars.json'
 $sourceFiles = @('azure.yaml', 'toolbox.yaml', 'scripts\Deploy-NativeFoundryAgent.ps1', 'scripts\Initialize-KnowledgeBase.ps1',
     'scripts\jumpbox\Invoke-IngestFunction.ps1', 'scripts\jumpbox\Invoke-EndToEnd.ps1', 'scripts\jumpbox\Test-Ingestion.ps1',
-    'src\shared\search-index.json', 'src\foundry_native_agent\.agentignore', 'src\foundry_native_agent\main.py',
+    'src\shared\search-index.json', 'src\shared\native-ingestion.json', 'src\foundry_native_agent\.agentignore', 'src\foundry_native_agent\main.py',
     'src\foundry_native_agent\requirements.txt', 'src\foundry_native_agent\requirements.lock',
     'src\hello_world\ask_agent.py', 'src\hello_world\requirements.txt', 'src\hello_world\requirements.lock')
 $hashInputs = @($sourceFiles | ForEach-Object { Get-FileHash -LiteralPath (Join-Path $root $_) -Algorithm SHA256 })
 $hashInputs += @('Invoke-Accelerator.ps1', 'Deploy-IngestFunction.ps1', 'Ensure-AgentCapabilityHost.ps1', 'Approve-SharedPrivateLink.ps1',
-    'Test-Preflight.ps1', 'Verify-Deployment.ps1', 'Test-PublicDataPlaneRefused.ps1', 'Send-RunnerArtifacts.ps1') | ForEach-Object {
+    'Test-NativePrivateLinks.ps1', 'Test-Preflight.ps1', 'Verify-Deployment.ps1', 'Test-PublicDataPlaneRefused.ps1', 'Send-RunnerArtifacts.ps1') | ForEach-Object {
     Get-FileHash -LiteralPath (Join-Path $PSScriptRoot $_) -Algorithm SHA256
 }
 $hashInputs += Get-ChildItem -LiteralPath $TerraformDir -Recurse -File | Where-Object {
@@ -594,9 +650,15 @@ foreach ($selected in $stageNames | Where-Object { $Stage -contains $_ }) {
                 } while ($true)
                 @{ status = 'approved'; group_id = 'openai_account'; account_id = $foundryId; search_id = $searchId }
             }
+            $null = Invoke-StageStep 'Infrastructure.NativePrivateLinks' {
+                & (Join-Path $PSScriptRoot 'Test-NativePrivateLinks.ps1') -TerraformDir $TerraformDir -SubscriptionId $SubscriptionId
+            } -Always
         }
         { $_ -in @('Workload', 'Verify') } {
             if ($state.steps['Infrastructure.SharedLink'].status -ne 'succeeded') { throw 'Complete Infrastructure before Workload or Verify.' }
+            $null = Invoke-StageStep 'Infrastructure.NativePrivateLinks' {
+                & (Join-Path $PSScriptRoot 'Test-NativePrivateLinks.ps1') -TerraformDir $TerraformDir -SubscriptionId $SubscriptionId
+            } -Always
             $manifest = Get-DeploymentManifest
             if (-not $ToolManifestPath) { throw 'Specify -ToolManifestPath with verified azd/uv/Python artifacts and all eight pinned Foundry extension versions. Generate it with scripts/Get-RunnerToolManifest.ps1.' }
             $pins = Get-Content -LiteralPath $ToolManifestPath -Raw | ConvertFrom-Json
@@ -652,6 +714,7 @@ foreach ($selected in $stageNames | Where-Object { $Stage -contains $_ }) {
             }
             finally { $sha.Dispose() }
             if ($state.workload_fingerprint -and $state.workload_fingerprint -ne $workloadFingerprint) {
+                if ($state.steps['Workload.Native'].status -in @('running', 'failed')) { throw 'Native deployment outcome is unresolved. Reconcile the recorded private-runner attempt before changing workload bindings.' }
                 if ($Resume) { throw 'Planner, tool pins, or deployed output identities changed. Run Workload without -Resume to review the changed binding.' }
                 foreach ($key in @($state.steps.Keys | Where-Object { $_ -like 'Workload.*' -or $_ -like 'Verify.*' })) { $state.steps.Remove($key) }
             }
@@ -664,8 +727,9 @@ foreach ($selected in $stageNames | Where-Object { $Stage -contains $_ }) {
             } -Always
             $null = Invoke-StageStep 'Workload.Tools' { Initialize-RunnerTools }
             if ($selected -eq 'Workload') {
-                $null = Invoke-StageStep 'Workload.Knowledge' { Invoke-RunnerWorkload 'Knowledge' }
                 $null = Invoke-StageStep 'Workload.Function' { & (Join-Path $PSScriptRoot 'Deploy-IngestFunction.ps1') -TerraformDir $TerraformDir -Confirm:$false }
+                $null = Invoke-StageStep 'Workload.StageFixture' { Invoke-RunnerWorkload 'StageFixture' }
+                $null = Invoke-StageStep 'Workload.Knowledge' { Invoke-RunnerWorkload 'Knowledge' } -Always
                 $native = Invoke-StageStep 'Workload.Native' { Invoke-RunnerWorkload 'Native' }
                 if ([string]$native.principal_id -notmatch '^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$') { throw 'Native deployment returned no valid principal ID.' }
                 $null = Invoke-StageStep 'Workload.RuntimeRbac' {

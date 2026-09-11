@@ -76,12 +76,15 @@ try {
     Invoke-Checked $PythonPath (@($pythonRunner, 'retrieval') + $releaseArguments)
     Invoke-Checked $PythonPath (@($pythonRunner, 'knowledge_schema') + $releaseArguments)
     $shell = (Get-Process -Id $PID).Path
-    foreach ($test in @('Test-OperationalGuards.ps1', 'Test-NativeDeployment.ps1', 'Test-Deployment.ps1')) {
+    foreach ($test in @('Test-OperationalGuards.ps1', 'Test-NativeDeployment.ps1', 'Test-Deployment.ps1',
+        'Test-NativeKnowledgeSource.ps1', 'Test-NativeIngestion.ps1', 'Test-NativePrivateLinks.ps1')) {
         Invoke-Checked $shell @('-NoProfile', '-File', (Join-Path $root "tests/$test"))
     }
     if ($IsWindows) {
         $guestShell = Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
-        Invoke-Checked $guestShell @('-NoProfile', '-File', (Join-Path $root 'tests/Test-NativeDeployment.ps1'))
+        foreach ($test in @('Test-NativeDeployment.ps1', 'Test-NativeKnowledgeSource.ps1', 'Test-NativeIngestion.ps1', 'Test-NativePrivateLinks.ps1')) {
+            Invoke-Checked $guestShell @('-NoProfile', '-File', (Join-Path $root "tests/$test"))
+        }
         Invoke-Checked $shell @('-NoProfile', '-File', (Join-Path $root 'tests/Test-ArtifactTransfer.ps1'))
     }
     elseif ($Release) { throw 'Release requires the Windows artifact transport guard suite.' }
@@ -108,6 +111,16 @@ try {
                 if (Test-Path (Join-Path $directory '.terraform.lock.hcl')) { $initArguments += '-lockfile=readonly' }
                 Invoke-Checked 'terraform' $initArguments
                 Invoke-Checked 'terraform' @("-chdir=$directory", 'validate', '-no-color')
+            }
+            $nativeTest = Join-Path 'tests' 'native_ingestion.tftest.hcl'
+            if (-not (Test-Path (Join-Path $terraformRoot $nativeTest))) { throw 'The mocked native ingestion Terraform test is missing.' }
+            $nativeOutput = @(Invoke-Checked 'terraform' @("-chdir=$terraformRoot", 'test', "-filter=$nativeTest", '-json', '-no-color'))
+            $nativeEvents = @($nativeOutput | ForEach-Object { $_ | ConvertFrom-Json })
+            foreach ($event in $nativeEvents) { Write-Host $event.'@message' }
+            $nativeSummary = @($nativeEvents | Where-Object type -eq 'test_summary')
+            if ($nativeSummary.Count -ne 1 -or $nativeSummary[0].test_summary.status -ne 'pass' -or
+                $nativeSummary[0].test_summary.passed -lt 1 -or $nativeSummary[0].test_summary.skipped -ne 0) {
+                throw 'Native ingestion Terraform contract tests must execute successfully without skips.'
             }
             $authTest = Join-Path 'tests' 'auth.tftest.hcl'
             if (-not (Test-Path (Join-Path $authModule $authTest))) { throw 'The mocked Terraform auth test is missing.' }

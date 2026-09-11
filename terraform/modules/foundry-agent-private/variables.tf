@@ -43,8 +43,20 @@ variable "operator_object_id" {
 }
 
 variable "search_sku" {
-  type    = string
-  default = "standard"
+  description = "Search tier for directly configured native CU indexers, not generated knowledge-source ingestion. S1 private enrichment requires live service createdAt >= 2024-04-03."
+  type        = string
+  default     = "standard"
+
+  validation {
+    condition     = contains(["standard", "standard2", "standard3"], var.search_sku)
+    error_message = "Directly configured native CU ingestion supports Search S1, S2 or S3 with default hosting; S1 eligibility requires live createdAt >= 2024-04-03."
+  }
+}
+
+variable "search_user_assigned_identity_ids" {
+  description = "Stable identity name => UAMI resource ID to attach alongside the Search system identity."
+  type        = map(string)
+  default     = {}
 }
 
 variable "cosmos_total_throughput_limit" {

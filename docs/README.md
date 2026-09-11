@@ -9,6 +9,7 @@ instructions from dated implementation and acceptance history.
 | I want to... | Start here |
 | --- | --- |
 | Understand the services, identities and data flow | [Architecture](architecture.md) |
+| Review the fixture-validated S1 ingestion contract | [Native ingestion](native-ingestion.md) |
 | Deploy a new private environment | [Deployment](deployment.md) |
 | Install development tools and run checks without Azure | [Testing](TESTING.md) |
 | Ingest the fixture and ask a grounded question | [Complete demo](deployment.md#complete-demo) and [Python client](../src/hello_world/README.md) |
@@ -19,7 +20,11 @@ instructions from dated implementation and acceptance history.
 | Check dependency, API and runtime assumptions | [Compatibility](compatibility.md) |
 | Change code or report an issue | [Contributing](../CONTRIBUTING.md) and [security policy](../SECURITY.md) |
 
-## Design assets
+## Historical design assets
+
+These diagrams depict the earlier custom Function extraction/indexing path, not
+the current Search-owned native pipeline. Use [Architecture](architecture.md) for
+the current flow. Replacement artwork requires a separately reviewed contract.
 
 - [Topology PNG](diagrams/capability-host-deployment-azure-architecture.png) and
   [Mermaid source](diagrams/capability-host-deployment-azure-architecture.mmd).
@@ -28,6 +33,10 @@ instructions from dated implementation and acceptance history.
 - [Diagram reproduction and review contract](diagrams/README.md).
 
 ## Status and evidence
+
+The current baseline is fixture-backed native S1 acceptance and repeated normal
+Verify. Actual SharePoint integration is deferred because no sample is available;
+acceptance of the structure is neither source-acquisition proof nor consent.
 
 [STATUS.md](STATUS.md) records the current accepted baseline and clearly labeled
 historical migrations. [VALIDATION.md](VALIDATION.md) records live checks, hosted CI,

@@ -1,11 +1,16 @@
 # Secure Multi-Region Foundry Accelerator Publication Plan
 
+**Historical custom-ingestion plan, 2026-09-09 to 2026-09-10.** The scope and
+results below apply to that revision. See [STATUS.md](STATUS.md) for the current
+fixture-backed native S1 baseline and [deployment.md](deployment.md) for current
+procedures.
+
 Approved scope: phases 1-6, with minimal automated tests, followed by the live phase-6 rehearsal.
 Planning baseline: commit `3e0a504` on `main`, 2026-09-09, before these implementation changes.
 Beads is the execution tracker; this document
 records scope, sequencing, decisions, acceptance criteria, and evidence requirements.
 
-## Current Readiness
+## Historical Readiness: 2026-09-10
 
 **Core rebuild and live acceptance passed, 2026-09-10 UTC.** The old environment was
 removed in the approved order, both Foundry accounts purged, and the lab fully rebuilt.

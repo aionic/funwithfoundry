@@ -1,23 +1,39 @@
 {
-  "name": "spo-docs",
+  "contractVersion": 2,
+  "purpose": "Native index template; initializer binds the secondary embedding endpoint, deployment and UAMI and sends only REST index properties.",
+  "owner": "accelerator-native-indexer",
+  "name": "spo-native-index",
   "fields": [
-    { "name": "id", "type": "Edm.String", "key": true, "filterable": true },
-    { "name": "title", "type": "Edm.String", "searchable": true, "retrievable": true },
-    { "name": "content", "type": "Edm.String", "searchable": true, "retrievable": true, "analyzer": "standard.lucene" },
-    { "name": "source_url", "type": "Edm.String", "retrievable": true },
-    { "name": "source_id", "type": "Edm.String", "filterable": true, "retrievable": true },
-    { "name": "content_hash", "type": "Edm.String", "filterable": true, "retrievable": true }
+    { "name": "snippet_id", "type": "Edm.String", "key": true, "searchable": true, "analyzer": "keyword", "retrievable": true },
+    { "name": "snippet", "type": "Edm.String", "searchable": true, "retrievable": true },
+    { "name": "snippet_vector", "type": "Collection(Edm.Single)", "searchable": true, "retrievable": false, "dimensions": 3072, "vectorSearchProfile": "spo-native-vector-profile" },
+    { "name": "doc_url", "type": "Edm.String", "retrievable": true, "filterable": true },
+    { "name": "snippet_parent_id", "type": "Edm.String", "filterable": true, "retrievable": true }
   ],
+  "vectorSearch": {
+    "algorithms": [{ "name": "spo-native-hnsw", "kind": "hnsw", "hnswParameters": { "metric": "cosine" } }],
+    "profiles": [{ "name": "spo-native-vector-profile", "algorithm": "spo-native-hnsw", "vectorizer": "spo-native-vectorizer" }],
+    "vectorizers": [{ "name": "spo-native-vectorizer", "kind": "azureOpenAI", "azureOpenAIParameters": { "modelName": "text-embedding-3-large" } }]
+  },
   "semantic": {
-    "defaultConfiguration": "default-semantic",
-    "configurations": [
-      {
-        "name": "default-semantic",
-        "prioritizedFields": {
-          "titleField": { "fieldName": "title" },
-          "prioritizedContentFields": [ { "fieldName": "content" } ]
-        }
-      }
+    "defaultConfiguration": "spo-native-semantic",
+    "configurations": [{ "name": "spo-native-semantic", "prioritizedFields": { "prioritizedContentFields": [{ "fieldName": "snippet" }] } }]
+  },
+  "projection": {
+    "sourceContext": "/document/text_sections/*",
+    "parentKeyFieldName": "snippet_parent_id",
+    "projectionMode": "skipIndexingParentDocuments",
+    "mappings": [
+      { "name": "snippet", "source": "/document/text_sections/*/content" },
+      { "name": "snippet_vector", "source": "/document/text_sections/*/text_vector" },
+      { "name": "doc_url", "source": "/document/metadata_storage_path" }
     ]
+  },
+  "documentSemantics": {
+    "snippet": "Content Understanding Markdown text section, including inline figure descriptions.",
+    "doc_url": "Staged blob metadata_storage_path; not the original SharePoint URL.",
+    "snippet_parent_id": "Search-generated parent key; not the Function source_id.",
+    "metadata": "Preserve originalURL and other source metadata in staging; do not substitute them for metadata_storage_path in child projections.",
+    "images": "Images and locationMetadata are enrichment outputs; no asset-store persistence or KB image serving is requested."
   }
 }

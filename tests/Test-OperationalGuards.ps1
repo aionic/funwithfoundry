@@ -64,7 +64,7 @@ function Invoke-GuardedScript {
     catch { $script:failure = $_ }
 }
 
-$allowedScripts = @('Grant-SharePointAccess.ps1', 'Stop-Lab.ps1', 'Test-PublicDataPlaneRefused.ps1', 'Verify-Deployment.ps1', 'Invoke-JumpboxScript.ps1')
+$allowedScripts = @('Get-LabEnvironment.ps1', 'Grant-SharePointAccess.ps1', 'Stop-Lab.ps1', 'Test-PublicDataPlaneRefused.ps1', 'Verify-Deployment.ps1', 'Invoke-JumpboxScript.ps1')
 foreach ($name in $allowedScripts) {
     $tokens = $null
     $parseErrors = $null
@@ -247,10 +247,48 @@ if ($Suite -in @('All', 'Jumpbox')) {
 }
 
 if ($Suite -in @('All', 'Verifier')) {
+    Invoke-GuardedScript 'Get-LabEnvironment.ps1'
+    Assert-Guard ($null -eq $failure -and $observed.Count -eq 1 -and $null -eq $observed[0].NativeIngestion) 'Historic outputs remain readable without native ingestion'
+    Assert-Guard ($observed[0].PSObject.Properties.Name -contains 'NativeIngestion') 'Historic outputs expose an explicit null NativeIngestion property'
+    $nativeIngestion = @{
+        storage_resource_id = "/subscriptions/$subscription/resourceGroups/rg-test-scus/providers/Microsoft.Storage/storageAccounts/test-staging"
+        storage_endpoint = 'https://test-staging.blob.core.windows.net/'
+        container_name = 'spo-staging'
+        folder_path = 'native/'
+        identity_resource_id = "/subscriptions/$subscription/resourceGroups/rg-test-cus/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-search-ingestion"
+        ai_services_endpoint = 'https://test-secondary.services.ai.azure.com/'
+        openai_endpoint = 'https://test-secondary.openai.azure.com/'
+        chat_deployment = 'native-chat'
+        chat_model = 'gpt-4.1'
+        embedding_deployment = 'native-embedding'
+        embedding_model = 'text-embedding-3-large'
+        shared_private_links = @{}
+    }
+    foreach ($groupId in @('blob', 'foundry_account', 'openai_account')) {
+        $nativeIngestion.shared_private_links["spl-native-$groupId"] = @{
+            id = "/subscriptions/$subscription/resourceGroups/rg-test-cus/providers/Microsoft.Search/searchServices/test-search/sharedPrivateLinkResources/spl-native-$groupId"
+            target_resource_id = if ($groupId -eq 'blob') { $nativeIngestion.storage_resource_id } else { "/subscriptions/$subscription/resourceGroups/rg-test-scus/providers/Microsoft.CognitiveServices/accounts/test-secondary" }
+            group_id = $groupId
+        }
+    }
+    $global:OperationalGuardState.Outputs.native_ingestion = @{ value = $nativeIngestion }
+    Invoke-GuardedScript 'Get-LabEnvironment.ps1'
+    Assert-Guard ($null -eq $failure -and $observed.Count -eq 1) 'Native ingestion outputs are readable'
+    foreach ($field in $nativeIngestion.Keys | Where-Object { $_ -ne 'shared_private_links' }) {
+        Assert-Guard ($observed[0].NativeIngestion.$field -ceq $nativeIngestion[$field]) "Native ingestion preserves $field without migration"
+    }
+    foreach ($name in $nativeIngestion.shared_private_links.Keys) {
+        foreach ($field in @('id', 'target_resource_id', 'group_id')) {
+            Assert-Guard ($observed[0].NativeIngestion.shared_private_links.$name.$field -ceq $nativeIngestion.shared_private_links[$name][$field]) "Native ingestion preserves $name/$field"
+        }
+    }
     $global:OperationalGuardState.Outputs.foundry_primary_account_id = @{ value = "/subscriptions/$subscription/resourceGroups/rg-test-cus/providers/Microsoft.CognitiveServices/accounts/test-primary" }
     $global:OperationalGuardState.Outputs.foundry_agent_subnet_id = @{ value = "/subscriptions/$subscription/resourceGroups/rg-test-cus/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/test-agent" }
     $global:OperationalGuardState.Outputs.hub_ids = @{ value = @{ primary = "/subscriptions/$subscription/resourceGroups/rg-test-net/providers/Microsoft.Network/virtualHubs/test-hub-primary"; secondary = "/subscriptions/$subscription/resourceGroups/rg-test-net/providers/Microsoft.Network/virtualHubs/test-hub-secondary" } }
     $global:OperationalGuardState.Outputs.ingest_function.value.storage = 'test-function-storage'
+    $global:OperationalGuardState.Outputs.foundry_primary.value.planner_deployment = 'primary-planner'
+    $global:OperationalGuardState.Outputs.foundry_primary.value.planner_model = 'gpt-5.2'
+    $global:OperationalGuardState.Outputs.foundry_primary.value.agent_tool_model = 'gpt-4o'
     $global:OperationalGuardState.AzHandler = {
         param($command)
         $scenario = $global:OperationalGuardState.VerifyCase
@@ -259,7 +297,84 @@ if ($Suite -in @('All', 'Verifier')) {
         if ($joined -like 'resource show *') {
             $id = $command[[array]::IndexOf($command, '--ids') + 1]
             if ($scenario -eq 'missing-resource') { return '{}' }
-            return (@{ id = $id; properties = @{ publicNetworkAccess = 'Disabled'; disableLocalAuth = ($scenario -ne 'local-auth') } } | ConvertTo-Json)
+            $native = $global:OperationalGuardState.Outputs.native_ingestion.value
+            if ($id -like '*/userAssignedIdentities/*') {
+                return (@{ id = $(if ($scenario -eq 'wrong-uami-id') { 'wrong-id' } else { $id }); properties = @{ principalId = $(if ($scenario -eq 'shared-principal') { 'test-principal' } else { 'search-ingestion-principal' }); clientId = 'search-ingestion-client' } } | ConvertTo-Json)
+            }
+            $resource = @{ id = $id; properties = @{ publicNetworkAccess = 'Disabled'; disableLocalAuth = ($scenario -ne 'local-auth') } }
+            if ($id -like '*/Microsoft.Search/searchServices/*') {
+                $resource.sku = @{ name = $(switch -Wildcard ($scenario) { 'ineligible-sku' { 'basic' }; 's1-*' { 'standard' }; 's3' { 'standard3' }; 'l1' { 'storage_optimized_l1' }; 'l2' { 'storage_optimized_l2' }; default { 'standard2' } }) }
+                $resource.properties.provisioningState = if ($scenario -eq 'search-not-ready') { 'updating' } else { 'succeeded' }
+                if ($scenario -eq 'search-public') { $resource.properties.publicNetworkAccess = 'Enabled' }
+                switch ($scenario) {
+                    's1-modern' { $resource.properties.createdAt = '2026-09-09T00:00:00Z' }
+                    's1-system-data' { $resource.systemData = @{ createdAt = '2026-09-09T00:00:00Z' } }
+                    's1-boundary' { $resource.properties.createdAt = '2024-04-03T00:00:00Z' }
+                    's1-old' { $resource.properties.createdAt = '2024-04-02T23:59:59Z' }
+                    's1-invalid-date' { $resource.properties.createdAt = 'not-a-date' }
+                }
+                $resource.properties.semanticSearch = if ($scenario -eq 'semantic-disabled') { 'disabled' } else { 'standard' }
+                $resource.properties.hostingMode = if ($scenario -eq 'high-density') { 'highDensity' } else { 'Default' }
+                $resource.properties.networkRuleSet = @{ bypass = $(if ($scenario -eq 'trusted-bypass') { 'AzureServices' } else { 'None' }) }
+                $resource.identity = @{ type = 'SystemAssigned, UserAssigned'; principalId = 'search-system-principal'; userAssignedIdentities = @{} }
+                if ($native -and $scenario -ne 'missing-uami') { $resource.identity.userAssignedIdentities[$native.identity_resource_id] = @{ principalId = $(if ($scenario -eq 'wrong-attached-principal') { 'other-principal' } else { 'search-ingestion-principal' }); clientId = 'search-ingestion-client' } }
+                if ($scenario -eq 'search-attached-function-uami') { $resource.identity.userAssignedIdentities['function-uami'] = @{ principalId = 'test-principal'; clientId = 'test-client' } }
+                if ($scenario -eq 'missing-system-identity') { $resource.identity.Remove('principalId') }
+            }
+            if ($id -like '*/Microsoft.Web/sites/*') {
+                $resource.identity = @{ type = 'UserAssigned'; userAssignedIdentities = @{
+                    "/subscriptions/$($global:OperationalGuardState.Subscription)/resourceGroups/rg-test-scus/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-function" = @{ principalId = 'test-principal'; clientId = 'test-client' }
+                } }
+                if ($scenario -eq 'function-attached-ingestion-uami') { $resource.identity.userAssignedIdentities[$native.identity_resource_id] = @{ principalId = 'search-ingestion-principal'; clientId = 'search-ingestion-client' } }
+            }
+            return ($resource | ConvertTo-Json -Depth 10)
+        }
+        if ($joined -like 'role assignment list *') {
+            if ($scenario -eq 'roles-unavailable') { $global:LASTEXITCODE = 1; return }
+            if ($scenario -eq 'roles-malformed') { return '{}' }
+            if ($scenario -eq 'roles-malformed-entry') { return '[{"principalId":"test-principal","scope":true,"roleDefinitionName":"Owner"}]' }
+            if ($scenario -eq 'roles-empty') { return '[]' }
+            $scope = $command[[array]::IndexOf($command, '--scope') + 1]
+            $assignments = @()
+            if ($scope -like '*/storageAccounts/test-staging') {
+                $assignments += @{ principalId = 'search-ingestion-principal'; roleDefinitionName = 'Storage Blob Data Reader'; scope = $scope }
+                $assignments += @{ principalId = 'test-principal'; roleDefinitionName = 'Storage Blob Data Contributor'; scope = $scope }
+                if ($scenario -eq 'ingestion-blob-writer') { $assignments += @{ principalId = 'search-ingestion-principal'; roleDefinitionName = 'Storage Blob Data Contributor'; scope = $scope } }
+            }
+            if ($scope -like '*/accounts/test-primary') {
+                $assignments += @{ principalId = 'search-system-principal'; roleDefinitionName = 'Cognitive Services OpenAI User'; scope = $scope }
+            }
+            if ($scope -like '*/accounts/test-secondary') {
+                $assignments += @{ principalId = 'search-ingestion-principal'; roleDefinitionName = 'Cognitive Services User'; scope = $scope }
+                $assignments += @{ principalId = 'search-ingestion-principal'; roleDefinitionName = 'Cognitive Services OpenAI User'; scope = $scope }
+            }
+            if ($scope -like '*/searchServices/test-search') {
+                $assignments += @{ principalId = 'operator-principal'; roleDefinitionName = 'Search Index Data Contributor'; scope = $scope }
+                if ($scenario -eq 'function-search-writer') { $assignments += @{ principalId = 'test-principal'; roleDefinitionName = 'Search Index Data Contributor'; scope = $scope } }
+                if ($scenario -eq 'ingestion-search-writer') { $assignments += @{ principalId = 'search-ingestion-principal'; roleDefinitionName = 'Search Service Contributor'; scope = $scope } }
+            }
+            if ($scenario -eq 'function-cognitive-user' -and $scope -like '*/accounts/test-secondary') { $assignments += @{ principalId = 'test-principal'; roleDefinitionName = 'Cognitive Services User'; scope = $scope } }
+            if ($scenario -eq 'function-inherited-owner') { $assignments += @{ principalId = 'test-principal'; roleDefinitionName = 'Owner'; scope = "/subscriptions/$($global:OperationalGuardState.Subscription)" } }
+            if ($scenario -eq 'function-child-scope-only') { $assignments += @{ principalId = 'test-principal'; roleDefinitionName = 'Cognitive Services User'; scope = "$scope/unrelated-child" } }
+            if ($scenario -eq 'wrong-role-scope') { foreach ($assignment in $assignments) { $assignment.scope = '/subscriptions/other' } }
+            if ($scenario -eq 'wrong-role-principal') { foreach ($assignment in $assignments) { $assignment.principalId = 'other-principal' } }
+            if ($scenario -eq 'planner-uses-ingestion-uami' -and $scope -like '*/accounts/test-primary') { $assignments[0].principalId = 'search-ingestion-principal' }
+            if ($scenario -eq 'ingestion-uses-system-identity' -and $scope -like '*/accounts/test-secondary') { foreach ($assignment in $assignments) { $assignment.principalId = 'search-system-principal' } }
+            foreach ($roleName in @('Storage Blob Data Reader', 'Storage Blob Data Contributor', 'Cognitive Services User', 'Cognitive Services OpenAI User')) {
+                if ($scenario -eq "missing-$roleName") { $assignments = @($assignments | Where-Object { $_.roleDefinitionName -ne $roleName }) }
+            }
+            return (ConvertTo-Json -InputObject $assignments -Depth 10)
+        }
+        if ($joined -like 'functionapp config appsettings list *') {
+            if ($command[[array]::IndexOf($command, '--query') + 1] -cne '[].name') { throw 'Setting readback must request names only' }
+            if ($scenario -eq 'settings-unavailable') { throw 'secret-setting-value-sentinel' }
+            if ($scenario -eq 'settings-empty') { return '[]' }
+            if ($scenario -eq 'settings-malformed') { return '[{"name":"secret-setting-value-sentinel"}]' }
+            $names = @('AZURE_CLIENT_ID', 'STAGING_BLOB_ENDPOINT', 'STAGING_CONTAINER', 'AzureWebJobsStorage__credential')
+            foreach ($legacyName in @('CU_ENDPOINT', 'CU_ANALYZER_ID', 'SEARCH_ENDPOINT', 'SEARCH_INDEX')) {
+                if ($scenario -eq "legacy-$legacyName") { $names += $legacyName }
+            }
+            return (ConvertTo-Json -InputObject $names)
         }
         if ($joined -like 'network private-endpoint list *') {
             if ($scenario -eq 'missing-pe') { return '[]' }
@@ -282,6 +397,27 @@ if ($Suite -in @('All', 'Verifier')) {
         }
         if ($joined -like 'rest --method get *') {
             $url = $command[[array]::IndexOf($command, '--url') + 1]
+            if ($url -like '*/sharedPrivateLinkResources/*') {
+                $id = ($url -split '\?')[0].Replace('https://management.azure.com', '')
+                if ($id -like '*/spl-foundry') {
+                    return (@{ id = $id; properties = @{ privateLinkResourceId = $global:OperationalGuardState.Outputs.foundry_primary_account_id.value; groupId = 'openai_account'; status = $(if ($scenario -eq 'primary-spl-pending') { 'Pending' } else { 'Approved' }); provisioningState = 'Succeeded' } } | ConvertTo-Json -Depth 10)
+                }
+                $expected = @($global:OperationalGuardState.Outputs.native_ingestion.value.shared_private_links.Values | Where-Object { $_.id -eq $id })[0]
+                if ($scenario -eq 'missing-spl') { return '{}' }
+                return (@{ id = $(if ($scenario -eq 'wrong-spl-id') { 'wrong-id' } else { $id }); properties = @{
+                    privateLinkResourceId = $(if ($scenario -eq 'wrong-spl-target') { 'wrong-target' } else { $expected.target_resource_id })
+                    groupId = $(if ($scenario -eq 'wrong-spl-group') { 'account' } else { $expected.group_id })
+                    status = $(if ($scenario -eq "pending-$($expected.group_id)") { 'Pending' } else { 'Approved' })
+                    provisioningState = $(if ($scenario -eq 'spl-provisioning') { 'Updating' } else { 'Succeeded' })
+                } } | ConvertTo-Json -Depth 10)
+            }
+            if ($url -like '*/deployments/*') {
+                $id = ($url -split '\?')[0].Replace('https://management.azure.com', '')
+                $name = ($id -split '/')[-1]
+                $model = switch ($name) { 'primary-planner' { 'gpt-5.2' }; 'gpt-4o' { 'gpt-4o' }; 'native-chat' { 'gpt-4.1' }; 'native-embedding' { 'text-embedding-3-large' } }
+                if ($scenario -eq "missing-deployment-$name") { return '{}' }
+                return (@{ id = $id; properties = @{ model = @{ name = $(if ($scenario -eq "wrong-model-$name") { 'wrong-model' } else { $model }) }; provisioningState = $(if ($scenario -eq 'deployment-not-ready') { 'Updating' } else { 'Succeeded' }) } } | ConvertTo-Json -Depth 10)
+            }
             if ($url -like '*/capabilityHosts?*') {
                 if ($scenario -eq 'missing-host') { return '{"value":[]}' }
                 return (@{ value = @(@{ name = 'test-host'; properties = @{ capabilityHostKind = 'Agents'; provisioningState = 'Succeeded'; vectorStoreConnections = @('test-search'); storageConnections = @('test-storage'); threadStorageConnections = @('test-cosmos') } }) } | ConvertTo-Json -Depth 10)
@@ -297,11 +433,109 @@ if ($Suite -in @('All', 'Verifier')) {
         }
         throw "Unexpected verification command: $joined"
     }
-    foreach ($scenario in @('success', 'query-error', 'missing-resource', 'missing-pe', 'one-missing-pe', 'missing-subnet', 'missing-host', 'missing-project', 'missing-routing', 'local-auth', 'route-table')) {
+    $passingScenarios = @('success', 's3', 's1-modern', 's1-system-data', 's1-boundary', 'function-child-scope-only')
+    $scenarios = $passingScenarios + @('query-error', 'missing-resource', 'missing-pe', 'one-missing-pe', 'missing-subnet', 'missing-host', 'missing-project', 'missing-routing', 'local-auth', 'route-table', 'ineligible-sku', 'missing-uami', 'wrong-uami-id', 'wrong-attached-principal', 'shared-principal', 'missing-system-identity', 'function-attached-ingestion-uami', 'missing-spl', 'wrong-spl-id', 'wrong-spl-target', 'wrong-spl-group', 'pending-blob', 'pending-foundry_account', 'pending-openai_account', 'spl-provisioning', 'semantic-disabled', 'high-density', 'trusted-bypass', 'roles-unavailable', 'roles-malformed', 'roles-empty', 'wrong-role-scope', 'wrong-role-principal', 'function-search-writer', 'function-cognitive-user', 'function-inherited-owner', 'ingestion-blob-writer', 'ingestion-search-writer', 'planner-uses-ingestion-uami', 'ingestion-uses-system-identity', 'settings-unavailable', 'settings-empty', 'settings-malformed', 'primary-spl-pending', 'deployment-not-ready')
+    $scenarios += @('l1', 'l2', 's1-old', 's1-missing-date', 's1-invalid-date', 'search-not-ready', 'search-public')
+    $scenarios += @('CU_ENDPOINT', 'CU_ANALYZER_ID', 'SEARCH_ENDPOINT', 'SEARCH_INDEX') | ForEach-Object { "legacy-$_" }
+    $scenarios += @('search-attached-function-uami', 'roles-malformed-entry')
+    $scenarios += @('Storage Blob Data Reader', 'Storage Blob Data Contributor', 'Cognitive Services User', 'Cognitive Services OpenAI User') | ForEach-Object { "missing-$_" }
+    foreach ($name in @('primary-planner', 'gpt-4o', 'native-chat', 'native-embedding')) { $scenarios += "missing-deployment-$name", "wrong-model-$name" }
+    foreach ($scenario in $scenarios) {
         $global:OperationalGuardState.VerifyCase = $scenario
+        $global:OperationalGuardState.AzCalls.Clear()
         Invoke-GuardedScript 'Verify-Deployment.ps1'
-        Assert-Guard (($null -ne $failure) -eq ($scenario -ne 'success')) "Verifier $scenario verdict"
-        if ($scenario -ne 'success') { Assert-Guard (@($observed | Where-Object Status -eq 'FAIL').Count -gt 0) "Verifier $scenario emits a failing check" }
+        Assert-Guard (($null -ne $failure) -eq ($scenario -notin $passingScenarios)) "Verifier $scenario verdict: $failure"
+        if ($scenario -notin $passingScenarios) { Assert-Guard (@($observed | Where-Object Status -eq 'FAIL').Count -gt 0) "Verifier $scenario emits a failing check" }
+        else {
+            Assert-Guard (@($observed | Where-Object { $_.Check -like 'Native ingestion SPL:*' -and $_.Status -eq 'PASS' }).Count -eq 3) 'All three native links are verified'
+            Assert-Guard (@($observed | Where-Object { $_.Check -eq 'Native ingestion identity segregation' -and $_.Status -eq 'PASS' }).Count -eq 1) 'Staging and ingestion identities are independently verified'
+            foreach ($label in @('Primary planner SPL', 'Primary planner deployment', 'Primary agent tool deployment', 'Primary planner role', 'Native ingestion Search tier', 'Native ingestion Search creation date', 'Native Search runtime', 'Function staging writer role', 'Native ingestion Blob reader role', 'Native ingestion Cognitive Services role', 'Native ingestion OpenAI role')) {
+                Assert-Guard (@($observed | Where-Object { $_.Check -eq $label -and $_.Status -eq 'PASS' }).Count -eq 1) "$label remains verified"
+            }
+        }
+        if ($scenario -like 's1-*') {
+            $ageCheck = @($observed | Where-Object Check -eq 'Native ingestion Search creation date')
+            Assert-Guard ($ageCheck.Count -eq 1 -and $ageCheck[0].Detail -like '*createdAt*' -and $ageCheck[0].Detail -like '*2024-04-03*') 'S1 age check explains the live date source and eligibility cutoff'
+            if ($scenario -eq 's1-system-data') { Assert-Guard ($ageCheck[0].Detail -like '*systemData.createdAt*2026*') 'S1 systemData date source is visible' }
+            if ($scenario -eq 's1-modern') { Assert-Guard ($ageCheck[0].Detail -like '*properties.createdAt*2026*') 'S1 Search properties date source is visible' }
+            Assert-Guard (($observed | ConvertTo-Json -Depth 10) -notmatch 'quota') 'S1 readiness never invents a quota blocker'
+        }
+        foreach ($call in $global:OperationalGuardState.AzCalls | Where-Object { $_[0] -ne 'account' }) {
+            Assert-Guard ($call[[array]::IndexOf($call, '--subscription') + 1] -eq $subscription) 'Every verifier Azure query is explicitly subscription scoped'
+            Assert-Guard ($call[0] -in @('resource', 'role', 'rest', 'functionapp', 'network') -and $call -notcontains 'set' -and $call -notcontains 'create' -and $call -notcontains 'update') 'Verifier never requests Azure mutations'
+            if ($call[0] -eq 'rest') { Assert-Guard ($call[[array]::IndexOf($call, '--method') + 1] -eq 'get') 'Verifier REST requests are read-only' }
+            if ($call[0] -eq 'role') { Assert-Guard ($call -contains '--scope' -and $call -contains '--include-inherited' -and $call -notcontains '--all') 'Scoped role absence checks include inherited assignments without incompatible --all' }
+        }
+        if ($scenario -in @('settings-unavailable', 'settings-malformed')) {
+            Assert-Guard (($observed | ConvertTo-Json -Depth 10) -notmatch 'secret-setting-value-sentinel') 'Setting values and setting-readback exceptions are not logged'
+        }
+        if ($scenario -in @('roles-unavailable', 'roles-malformed', 'roles-malformed-entry')) {
+            Assert-Guard (@($observed | Where-Object { $_.Check -like '*privileges*' -and $_.Status -eq 'PASS' }).Count -eq 0) 'Unreadable role assignments never prove absence'
+        }
+        $expectedFailure = switch ($scenario) {
+            's1-old' { 'Native ingestion Search creation date' }
+            's1-missing-date' { 'Native ingestion Search creation date' }
+            's1-invalid-date' { 'Native ingestion Search creation date' }
+            'ineligible-sku' { 'Native ingestion Search tier' }
+            'l1' { 'Native ingestion Search tier' }
+            'l2' { 'Native ingestion Search tier' }
+            'search-not-ready' { 'Native Search runtime' }
+            'search-public' { 'AI Search: test-search' }
+            'search-attached-function-uami' { 'Native ingestion identity segregation' }
+            'function-attached-ingestion-uami' { 'Native ingestion identity segregation' }
+            'planner-uses-ingestion-uami' { 'Primary planner role' }
+            'ingestion-uses-system-identity' { 'Native ingestion Cognitive Services role' }
+            'function-search-writer' { 'Function Search privileges removed' }
+            'function-cognitive-user' { 'Function Foundry privileges removed (secondary)' }
+            'ingestion-blob-writer' { 'Native ingestion Blob write privileges absent' }
+            'ingestion-search-writer' { 'Native ingestion Search write privileges absent' }
+        }
+        if ($expectedFailure) {
+            Assert-Guard (@($observed | Where-Object { $_.Check -eq $expectedFailure -and $_.Status -eq 'FAIL' }).Count -eq 1) "$scenario fails the specific identity/role guard"
+        }
+    }
+    $global:OperationalGuardState.VerifyCase = 'success'
+    foreach ($field in @('native_ingestion') + @($nativeIngestion.Keys)) {
+        $saved = $nativeIngestion[$field]
+        if ($field -eq 'native_ingestion') { $global:OperationalGuardState.Outputs.Remove($field) }
+        else { $nativeIngestion.Remove($field) }
+        try {
+            Invoke-GuardedScript 'Verify-Deployment.ps1'
+            Assert-Guard ($null -ne $failure) "Verifier rejects missing $field"
+            Assert-Guard (@($observed | Where-Object { $_.Check -eq 'Native ingestion output contract' -and $_.Status -eq 'FAIL' }).Count -eq 1) "Missing $field fails the native contract explicitly"
+        }
+        finally {
+            if ($field -eq 'native_ingestion') { $global:OperationalGuardState.Outputs.native_ingestion = @{ value = $nativeIngestion } }
+            else { $nativeIngestion[$field] = $saved }
+        }
+    }
+    foreach ($case in @(
+        @{ Field = 'storage_resource_id'; Value = '/subscriptions/other/resourceGroups/rg-other/providers/Microsoft.Storage/storageAccounts/other' }
+        @{ Field = 'storage_endpoint'; Value = 'https://wrong-storage.blob.core.windows.net/' }
+        @{ Field = 'identity_resource_id'; Value = '/subscriptions/other/resourceGroups/rg-other/providers/Microsoft.ManagedIdentity/userAssignedIdentities/other' }
+        @{ Field = 'ai_services_endpoint'; Value = 'https://test-primary.services.ai.azure.com/' }
+        @{ Field = 'openai_endpoint'; Value = 'https://test-secondary.cognitiveservices.azure.com/' }
+        @{ Field = 'folder_path'; Value = '' }
+        @{ Field = 'shared_private_links'; Value = @{} }
+        @{ Field = 'shared_private_links'; Value = @(@{}, @{}, @{}) }
+    )) {
+        $saved = $nativeIngestion[$case.Field]
+        $nativeIngestion[$case.Field] = $case.Value
+        try {
+            Invoke-GuardedScript 'Verify-Deployment.ps1'
+            Assert-Guard ($null -ne $failure -and @($observed | Where-Object { $_.Check -eq 'Native ingestion output contract' -and $_.Status -eq 'FAIL' }).Count -eq 1) "Malformed or misrouted $($case.Field) fails the native contract"
+        }
+        finally { $nativeIngestion[$case.Field] = $saved }
+    }
+    foreach ($field in @('id', 'target_resource_id', 'group_id')) {
+        $link = $nativeIngestion.shared_private_links['spl-native-foundry_account']
+        $saved = $link[$field]
+        $link[$field] = if ($field -eq 'group_id') { 'openai_account' } else { 'wrong-resource' }
+        try {
+            Invoke-GuardedScript 'Verify-Deployment.ps1'
+            Assert-Guard ($null -ne $failure -and @($observed | Where-Object { $_.Check -eq 'Native ingestion output contract' -and $_.Status -eq 'FAIL' }).Count -eq 1) "Wrong SPL $field fails before native readback"
+        }
+        finally { $link[$field] = $saved }
     }
 }
 

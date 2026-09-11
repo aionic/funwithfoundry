@@ -1,15 +1,23 @@
 # Deployment
 
-This guide deploys a new environment from the supplied configuration, verifies the
-default fixture and explains how to resume safely. Run workstation commands from
+This guide describes deployment prerequisites, the existing stage interface and
+safe resume boundaries. Run workstation commands from
 the repository root in PowerShell 7.3+ on Windows. The existing workflow provisions
 Azure resources and executes private data-plane work on its jumpbox; a workstation
 login alone does not make the private endpoints reachable.
 
+**Validated baseline, 2026-09-11:** the explicit S1 native-indexer pipeline passed
+fixture-backed live acceptance, two subsequent normal Verify runs and the full
+local release gate. The existing lab used reviewed manual migration/recovery;
+a clean full orchestrator run and deletion acceptance remain unproven. Actual
+SharePoint integration is deferred because no sample is available. Structure
+acceptance does not prove source acquisition or authorize permissions. Start with
+the [native ingestion migration and ownership guide](native-ingestion.md).
+
 Use [architecture.md](architecture.md) to understand what you are deploying and
 [TESTING.md](TESTING.md) for local setup. Dated results and recovery history are in
 [VALIDATION.md](VALIDATION.md) and [STATUS.md](STATUS.md), not prerequisites for a new
-user. The recorded rebuild passed with operator recovery; it does not certify
+user. The historical custom-pipeline rebuild passed with operator recovery; it does not certify
 unattended deployment in another tenant. No fixed completion time is promised.
 
 **A fresh deployment does not start with teardown.** If replacing an existing lab,
@@ -23,9 +31,11 @@ review its exact targets, back up state and use the separate
 2. Prepare a fresh checkout, private Terraform input and protected persistent state.
 3. Install isolated local environments and pass the [release gate](TESTING.md#run-the-release-gate).
 4. Authenticate the workstation and generate/review the verified runner-tool manifest.
-5. Execute `Preflight`, `Infrastructure`, `Workload`, then `Verify`, reviewing plans
-   and stopping at the first failure or unknown outcome.
-6. Run the fixture questions and record evidence. Add SharePoint only after site consent.
+5. Obtain live approvals before
+   executing `Preflight`, `Infrastructure`, `Workload`, then `Verify`; review plans
+   and stop on failure.
+6. Record native Blob/fixture evidence. When a SharePoint sample and approved consent
+   are available, validate that source path separately; fixture success cannot prove it.
 7. Choose whether to leave resources running, pause only the VM, or perform a
    separately approved teardown. Firewalls and other services continue billing when paused.
 
@@ -48,6 +58,7 @@ Edit [the copied template](../terraform/terraform.tfvars.example) using these in
 | `prefix` | Use a unique 2-8 character lowercase alphanumeric prefix; default is `fwf` |
 | `primary_region`, `secondary_region` | Baseline is `centralus` and `southcentralus`; alternative regions require capability, quota and routing review |
 | `jumpbox_size`, `jumpbox_admin_username` | Defaults are `Standard_D4s_v5` and `fwfadmin`; check capacity and organizational policy |
+| `search_sku` | Local default `standard` (S1); accepts `standard`, `standard2`, `standard3`; direct private indexer eligibility also depends on service creation date and, for embeddings, a high-capacity region |
 | `my_object_id` | Empty uses the Terraform caller; set only to the reviewed operator object ID |
 | `native_agent_principal_id` | Leave empty initially; the staged workflow discovers the runtime instance identity after deployment and writes a separate RBAC variable file |
 | `tags` | Add owner/environment/cost context consistent with your governance |
@@ -56,6 +67,19 @@ Edit [the copied template](../terraform/terraform.tfvars.example) using these in
 Never paste a runtime principal from the status history. The initial plan explicitly
 uses an empty runtime principal; later staged plans pass the verified generated
 variable file. A blueprint principal is not the runtime identity.
+
+Review the local **Search S1 default** and actual overrides before any plan approval.
+Direct private indexers with built-in skills support S1+ on services created after
+April 3, 2024; embedding skills also require a high-capacity region. The current
+Central US Search service was created September 9, 2026. The generated private
+Blob KS S2+ path is not used; its earlier quota blocker is historical. Eligibility
+does not establish live CU/embedding acceptance. See
+[the native prerequisites](native-ingestion.md#identity-network-and-cost-review).
+Native ingestion adds a Search UAMI and three secondary dependency shared private
+links, while removing the Function's CU/Search roles. Budget for scheduled CU/image
+and embedding/model usage as well as tier/network costs. Live tier changes and
+private-link approvals require separate authorization.
+Bind all services to this environment's outputs, never IDs from another sample.
 
 `EnvironmentName` labels azd and `.azure/<environment>/accelerator` progress;
 **it does not create a separate Terraform backend/workspace**. Terraform uses the
@@ -91,7 +115,9 @@ Foundry extensions. Review the manifest and adjacent `runner-tool-cache`; keep t
 together outside Git. Generation does not install the runner or deploy resources.
 Reuse an approved manifest rather than silently refreshing it midway through a run.
 
-After local checks, permission review and manifest review, execute one stage at a time:
+After local checks, permission review, manifest review and live approvals, run
+one stage at a time. These commands describe the interface, not proof of a clean
+full orchestrator run:
 
 ```powershell
 $ToolManifestPath = (Resolve-Path .\.azure\runner-tools.json).Path
@@ -110,8 +136,8 @@ $Deployment = @{
 .\scripts\Invoke-Accelerator.ps1 @Deployment -Stage Verify -Resume
 ```
 
-Stop on failure and inspect state before resuming. These are approved execution
-instructions, not proof of a successful run. `-ListStages` and `-WhatIf` support
+Stop on failure and inspect state before resuming. These interface examples are not
+proof of a successful live run. `-ListStages` and `-WhatIf` support
 local inspection without cloud calls; `-WhatIf` is not a Terraform plan or capacity
 check. Actual `Preflight` reads Azure. Plans have explicit approval and hash checks.
 The entrypoint has no teardown stage and does not run `azd provision`.
@@ -148,7 +174,9 @@ single-tenant API application, its service principal, an `api://<api-client-id>`
 identifier URI and an application role named `Ingestion.Invoke`. The root module
 assigns that role to the **jumpbox managed identity**. The API service principal requires
 assignment. The Function's own managed identity is a different identity, used for
-downstream Storage, Content Understanding, Search and optional Graph access.
+Storage and optional Graph access. Native Search ingestion uses a separate UAMI
+for staging reads and secondary CU/OpenAI access; the Function no longer owns those
+processing steps or its former CU/Search roles.
 
 The Terraform AzureAD identity must be able to create/manage the application and
 service principal, read the configured caller service principals, and assign the
@@ -191,12 +219,16 @@ Never disable locking or use access keys to make CI work.
 
 ## Ordered stages
 
+This table records the implemented native sequence. The existing lab passed manual
+migration/recovery and repeated normal Verify, not a clean full orchestrator run.
+Do not assume a pre-refactor resume checkpoint satisfies this sequence.
+
 | Stage | Required ordering and output | Completion evidence |
 | --- | --- | --- |
 | Preflight | Run implemented context, tool and capacity checks; separately confirm tenant authority, policy and private-runner readiness | Recorded pass/fail plus explicit unresolved gates; no credentials in output |
 | Infrastructure | Initialize preserved state; create network and injected Foundry account prerequisites; ensure account capability host; finish project, connections, roles, project host and private endpoints | Terraform results plus readiness read-back; `Accepted` alone is insufficient |
-| Workload | Prepare private runner; approve exact shared private link; publish Function package; create canonical Search index/IQ; compare and publish toolbox; deploy hosted code; discover runtime identity and reconcile RBAC | Package digest, active trigger, index schema, toolbox version, hosted version/principal and role evidence |
-| Verify | Validate infrastructure/private DNS, authorized Function fixture, both retrieval branches, failure cases and public refusal | Correlated request/document IDs and sanitized per-check outcomes |
+| Workload | Prepare runner and approve exact dependency links; publish staging Function; stage fixture; initialize six explicit native Search definitions; bind toolbox/hosted code; discover runtime identity and reconcile RBAC | Package digest, `202 staged` receipt, configuration read-back, toolbox/agent version and role evidence |
+| Verify | Validate infrastructure/private DNS and authorization; initialize with guarded receipt refresh after probes; verify blob provenance, fresh indexer execution, child chunks, IQ/native retrieval and public refusal | Correlated request/source/blob/chunk evidence and sanitized per-check outcomes; two normal runs passed without agent redeployment |
 
 The account capability host is platform-renamed and handled by
 [Ensure-AgentCapabilityHost.ps1](../scripts/Ensure-AgentCapabilityHost.ps1).
@@ -209,8 +241,25 @@ creation before the account host is ready. Keep delegated agent subnet names at
 Search IQ's planner uses an approved `openai_account` shared private link and the
 Search identity's `Cognitive Services OpenAI User` role on the Foundry account.
 Its configured model URI must use `https://<account>.openai.azure.com`.
-The planner does not invoke the hosted agent. The canonical index is text/semantic;
-the versioned toolbox uses `query_type: simple`, not a vector query.
+The planner does not invoke the hosted agent. Preserve this primary planner link.
+Separately approve Search's three new links to secondary staging (`blob`), CU
+(`foundry_account`) and OpenAI (`openai_account`) after exact-target review.
+
+Contract version 2, owner `accelerator-native-indexer`, uses API `2026-08-01-preview`
+for six explicit definitions: `spo-native-datasource`, `spo-native-index`,
+`spo-native-skillset`, `spo-native-indexer`, `spo-native` (kind `searchIndex`) and
+`spo-native-knowledge-base`. The private indexer runs on creation and a `PT5M`
+schedule. Azure Search executes CU with semantic 500-token/zero-overlap chunking,
+images/location and `gpt-5.2`, followed by 3072-dimensional embeddings and child
+projections. The toolbox requests `vector_semantic_hybrid` against that index.
+This is not auto-generated KS ingestion or custom Function enrichment. Existing
+definition mismatches block; no automatic update, migration, delete or fallback occurs.
+
+Any safe embedding output name, such as `text_vector`, is accepted only with a
+consistent projection; omitted/null semantic overlap means zero. These canonical
+aliases preserve the explicit contract and do not prove live service compatibility.
+The existing lab passed live native ingestion and retrieval with the required
+roles; each new deployment must verify its own grants and propagation.
 
 ### Private runner bootstrap
 
@@ -237,9 +286,12 @@ packages on the jumpbox does not install them in the Function or hosted agent.
 The staged implementation includes reviewed-manifest bootstrap, source-transfer
 hashes and managed-identity azd login. These passed the recorded rebuild, but each
 new private VM needs its own tool and identity verification. Its private PowerShell
-[Initialize-KnowledgeBase.ps1](../scripts/Initialize-KnowledgeBase.ps1) reads the same
-canonical schema as the Python helper; use the staged initializer, not two divergent
-index definitions. Verify every installer and extension path before live acceptance.
+[Initialize-KnowledgeBase.ps1](../scripts/Initialize-KnowledgeBase.ps1) owns creation
+and read-back of all six explicit definitions. The Python helper delegates to it. Keep
+both shared contracts with the checkout and derive all required inputs from the
+current outputs; do not reuse the old initializer's argument list. Success is
+`configuration-only`, `indexing_verified: false`, not an indexing wait. Verify every
+installer and extension path before live acceptance.
 
 The verified bundle carries four artifacts: azd, uv, the official Python `3.13.7`
 Windows installer and the eight-extension bundle. Installer SHA-256 values and
@@ -327,9 +379,10 @@ Local-only inspection and focused tests:
 .\tests\Test-ArtifactTransfer.ps1
 ```
 
-The 514 local guard assertions cover scope, integrity, ARM envelopes, SSH options,
+The local guard assertions cover scope, integrity, ARM envelopes, SSH options,
 guest publication/cleanup, credential ACLs, idempotence and failure cleanup. They
-are assertions over a narrow privileged transport surface, not 514 live scenarios.
+are assertions over a narrow privileged transport surface, not live scenarios.
+Record the actual count printed by the current run rather than a historical total.
 The recorded rebuild verified all four artifacts and cleanup after an approved
 restart, followed by tool installation and workload acceptance. On a new image,
 repeat servicing, installation, cleanup and workload checks rather than assuming
@@ -356,8 +409,9 @@ These workstation examples require the exact interpreters or access to their
 approved distribution hosts; they do not solve the private-runner egress blocker.
 The chosen client version matches CI, not an independent runtime support promise.
 Use a separate documentation environment as shown in [CONTRIBUTING.md](../CONTRIBUTING.md).
-The optional Python IQ helper has no dedicated lock; the staged PowerShell initializer
-is the default. Keep the full checkout for either initializer's shared index schema.
+The optional Python IQ launcher has no dedicated lock and invokes the same PowerShell
+initializer. Keep the full checkout and both shared JSON contracts; there is no
+independent Python index writer or custom-index fallback.
 
 [Deploy-IngestFunction.ps1](../scripts/Deploy-IngestFunction.ps1) copies the complete
 hashed Function lock into packaged requirements for the Oryx build. Native source
@@ -368,10 +422,11 @@ not install them in the remote Function or hosted runtime.
 
 ## Complete demo
 
-The default `Verify` stage is the simplest end-to-end demo: it prepares the locked
-client environment on the runner, invokes the authorization/ingestion probes and
-calls [Invoke-EndToEnd.ps1](../scripts/jumpbox/Invoke-EndToEnd.ps1) with the generated
-manifest. Do not manually rediscover those inputs just to rerun the standard checks.
+The `Verify` flow prepares the locked client environment, runs authorization/staging
+probes, initializes knowledge with guarded receipt refresh, and runs
+[Invoke-EndToEnd.ps1](../scripts/jumpbox/Invoke-EndToEnd.ps1). Two normal fixture-backed
+Verify runs passed without manual rebind or agent redeployment. Confirm the actual
+manifest/parameter contract and live approvals before using the stage examples.
 Read [resume guidance](#resume-and-release) first: successful fingerprint-matched
 steps can be skipped, so a skipped step is not a fresh live test.
 
@@ -415,10 +470,22 @@ script through a wrapper that cannot forward its mandatory parameters.
 
 The default request is `{"mode":"fixture","fixtureId":"accelerator-v1"}`.
 The Function module enables the constrained fixture by default. The fixture is generated in
-the **SCUS Function**, then follows the same staging, `analyzeBinary`, extraction,
-provenance and Search indexing path as SharePoint. A successful response must say
-`indexed` and include a request ID, document ID and content hash. The rerun must
-retain stable source/content identity. HTTP 200 without per-document success is failure.
+the **SCUS Function**, then follows the same raw-byte staging path as SharePoint.
+Success is HTTP `202`, `status: staged`, with request/source/hash and blob identifiers.
+The Function neither extracts nor indexes. Reruns overwrite the stable
+`native/{source_id}/source.ext` blob; they do not create immutable hash paths.
+
+Before retrieval acceptance, require HEAD checks against blob provenance/ETag,
+a fresh successful native indexer execution and nonempty child chunks. Child
+`doc_url` comes from `metadata_storage_path`, so it is the staged blob URL, not the
+SharePoint URL or `originalSource`. Projection aliases `/metadata_storage_path` and
+`/document/doc_url` require the exact untransformed indexer mapping
+`metadata_storage_path` to `doc_url`. Retain the original source ID/hash and encoded
+original URL as blob metadata, not promised child fields. See the
+[acceptance boundary](native-ingestion.md#provenance-and-acceptance). Manually staging
+a blob under `native/` can test the same native indexer without a Function call;
+retain required provenance metadata. Neither that test nor the fixture proves
+the actual SharePoint fetch, connector permissions or full SharePoint cross-region path.
 
 Next invoke IQ and the native Responses client from inside the VNet using current
 project, knowledge-base and agent configuration. Follow
@@ -448,10 +515,11 @@ case: uncertainty is expected, not a fabricated value. Inject a failed tool in t
 local tests and verify it cannot produce a successful grounded answer. Do not mutate
 production roles or indexes merely to manufacture a failure test.
 
-Keep proof separate: `Test-Ingestion` tests ingestion and selected auth/input negatives;
-its output explicitly does not prove retrieval or public network isolation. A
-CUS-jumpbox Search write is not proof of SCUS Function-to-CUS Search transit. Correlate
-the Function's request/document IDs with retrieval and, where available, network logs.
+Keep proof separate: `Test-Ingestion` tests staging and selected auth/input negatives;
+it does not prove indexing, retrieval or public isolation. Initializer success also
+does not prove indexing. Correlate Function request/source/blob metadata, fresh
+indexer evidence and generated child references with IQ/native retrieval. Historical
+Function-to-Search transit evidence belongs to the old custom pipeline only.
 
 Run [Test-PublicDataPlaneRefused.ps1](../scripts/Test-PublicDataPlaneRefused.ps1)
 from outside the private network. Public HTTP 200 is failure; a generic authorization
@@ -459,6 +527,11 @@ from outside the private network. Public HTTP 200 is failure; a generic authoriz
 test from inside the VNet. Its absence remains `not_tested`, not passed.
 
 ### Optional SharePoint
+
+Actual SharePoint integration is deferred because no sample is available and does
+not block publication of the fixture-backed baseline. Accepted structure is not
+technical proof or consent. The attempted-source and administrator blockers remain
+in [VALIDATION.md](VALIDATION.md#current-native-follow-up).
 
 Configure exactly one hostname, site path and file path in private Terraform inputs.
 Obtain explicit approval to read that document. The consenting administrative client
@@ -474,9 +547,27 @@ tenant-wide read or broader Function permissions.
 Rerun the private ingestion probe with `-IncludeSharePoint`, which submits
 `{"mode":"sharepoint"}` without caller-supplied URLs or paths. Match resulting
 provenance to retrieval. Mark this scenario passed only after the real Graph fetch
-and Function pipeline succeed. Synthetic success never implies SharePoint success.
+and staging, native indexing and retrieval gates succeed. For the complete path,
+use the [private verifier example](native-ingestion.md#private-sharepoint-verification)
+with `-Mode sharepoint` and explicit source-derived question and expected answer.
+Synthetic success never implies SharePoint success; staged-blob citations do not
+restore SharePoint ACLs.
 
 ## Resume and release
+
+Native initialization checks all six existing definitions before writing missing
+ones using `If-None-Match: *`. It refuses mismatches, including a historical
+`azureBlob` KS named `spo-native`, and never deletes definitions. The datasource-only
+exceptions are reviewed `-RebindDataSource` and opt-in `-RefreshDataSourceBinding`.
+Refresh requires a valid receipt with all configuration matching and only a stale
+ETag, then performs one PUT with the current `If-Match` ETag and verifies a new
+receipt. HTTP 412 is not retried; a matching current receipt stays read-only.
+Missing/wrong receipts require reviewed rebind; visible mismatches block. See
+[receipt and resume gates](native-ingestion.md#datasource-receipt-and-resume). Partial
+creation can remain after blocked read-back; the enabled indexer may already be
+running. Preserve the failed S2-attempt evidence, inventory exact surviving resources
+and seek approved recovery. Do not delete the old custom pipeline, force a tier
+upgrade or weaken validation to bypass a conflict.
 
 Resume at the first failed stage only after reading actual cloud state and prior
 stage results. A timeout is an unknown outcome, not evidence that a create did nothing.

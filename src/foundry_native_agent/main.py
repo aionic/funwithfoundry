@@ -1,6 +1,7 @@
 """Deterministic IQ -> read-only Search -> synthesis, served through Responses."""
 
 import asyncio
+import base64
 from collections.abc import Mapping, Sequence
 from contextlib import ExitStack
 import json
@@ -100,13 +101,13 @@ def validate_tool_result(value: Any) -> Any:
         if isinstance(decoded, dict):
             decoded = cast(dict[str, Any], decoded)
             return any(has_content(decoded[key]) for key in (
-                "answer", "content", "text", "value", "results", "documents", "response",
+                "answer", "content", "text", "snippet", "value", "results", "documents", "response",
                 "output", "structuredContent", "data",
             ) if key in decoded)
         return False
 
-    if tool_result_has_error(value) or not has_content(value):
-        raise ValueError("Retrieval failed or returned no usable content.")
+    if tool_result_has_error(value) or not has_content(value) or not collect_sources(value):
+        raise ValueError("Retrieval failed or returned no usable content with source references.")
     return value
 
 
@@ -136,36 +137,111 @@ def validate_tool_exchange(messages: Sequence[Any], call_id: str, name: str, que
 def collect_sources(value: Any) -> list[dict[str, Any]]:
     """Preserve source identifiers and metadata without inventing URLs or titles."""
     sources: list[dict[str, Any]] = []
+    identity_keys = (
+        "id", "document_id", "docKey", "source_id", "url", "source_url", "web_url", "webUrl",
+        "snippet_id", "snippet_parent_id", "doc_url",
+    )
 
-    def visit(item: Any) -> None:
+    def metadata(item: Mapping[str, Any]) -> dict[str, Any]:
+        return {key: item[key] for key in (*identity_keys, "reference_id", "title")
+                if isinstance(item.get(key), str) and item[key].strip()
+                and (key == "title" or not item[key].startswith("lc_"))
+                and not (key == "id" and item.get("type") in ("text", "input_text", "output_text"))}
+
+    def append_source(source: dict[str, Any]) -> None:
+        for original, alias in (("snippet_id", "source_id"), ("snippet_parent_id", "document_id"), ("doc_url", "url")):
+            if original in source:
+                source[alias] = source[original]
+        if any(key in source for key in identity_keys) and source not in sources:
+            sources.append(source)
+
+    def visit(item: Any, reference: bool = False) -> None:
         item = decode_result(item)
         if isinstance(item, list):
             for child in cast(list[Any], item):
-                visit(child)
+                visit(child, reference)
         elif isinstance(item, dict):
             item = cast(dict[str, Any], item)
             source_data = item.get("sourceData")
-            if isinstance(source_data, dict):
-                source = dict(cast(dict[str, Any], source_data))
-                if "id" in item:
-                    source["reference_id"] = item["id"]
-                if "docKey" in item:
-                    source["document_id"] = item["docKey"]
-                if source and source not in sources:
-                    sources.append(source)
+            if isinstance(source_data, dict) or reference:
+                source = metadata(cast(dict[str, Any], source_data)) if isinstance(source_data, dict) else metadata(item)
+                if not isinstance(source_data, dict):
+                    source.pop("id", None)
+                item_metadata = metadata(item)
+                if "id" in item_metadata:
+                    source["reference_id"] = item_metadata["id"]
+                if "docKey" in item_metadata:
+                    source["docKey"] = item_metadata["docKey"]
+                    source.setdefault("document_id", item_metadata["docKey"])
             else:
-                source = {key: item[key] for key in (
-                    "id", "reference_id", "document_id", "docKey", "source_id", "title",
-                    "url", "source_url", "web_url", "webUrl",
-                ) if key in item}
-                if source and source not in sources:
-                    sources.append(source)
+                source = metadata(item)
+            append_source(source)
             for key, child in item.items():
                 if key != "sourceData":
-                    visit(child)
+                    visit(child, key == "references")
 
     visit(value)
     return sources
+
+
+def is_native_blob_url(value: str) -> bool:
+    try:
+        parsed = urlparse(value)
+    except ValueError:
+        return False
+    return bool(
+        parsed.scheme == "https" and not parsed.username and not parsed.password
+        and not parsed.query and not parsed.fragment and not parsed.params
+        and re.fullmatch(r"[a-z0-9]{3,24}\.blob\.core\.windows\.net", parsed.netloc)
+        and re.fullmatch(r"/spo-staging/native/[a-f0-9]{64}/source\.[a-z0-9]{1,10}", parsed.path)
+        and value == "https://" + parsed.netloc + parsed.path
+    )
+
+
+def native_text_source(text: str) -> dict[str, str]:
+    """Accept only the native URL/UrlToken-encoded parent footer, never prose links."""
+    lines = text.splitlines()
+    while lines and not lines[-1].strip():
+        lines.pop()
+    if len(lines) < 3 or not "\n".join(lines[:-2]).strip():
+        raise ValueError("Native Search text has no content and source footer.")
+    source_url, parent_id = lines[-2:]
+    if not is_native_blob_url(source_url) or sum(is_native_blob_url(line) for line in lines) != 1:
+        raise ValueError("Native Search text has no unambiguous native Blob URL footer.")
+    encoded = base64.urlsafe_b64encode(source_url.encode("utf-8")).decode("ascii")
+    unpadded = encoded.rstrip("=")
+    if parent_id != unpadded + str(len(encoded) - len(unpadded)):
+        raise ValueError("Native Search parent marker does not match the returned URL.")
+    return {"doc_url": source_url, "snippet_parent_id": parent_id}
+
+
+def normalize_search_result(content: Any, artifact: Any = None) -> str:
+    """Put validated provenance in content; the Responses host omits tool artifacts."""
+    if tool_result_has_error(content) or tool_result_has_error(artifact):
+        raise ValueError("Search returned a failed result.")
+    payload: dict[str, Any] = {"content": content}
+    structured = field(artifact, "structured_content")
+    if structured is not None:
+        if not isinstance(structured, dict):
+            raise ValueError("Search structured content must be an object.")
+        sources = collect_sources(structured)
+        payload["structuredContent"] = structured
+    else:
+        sources = collect_sources(content)
+        if not sources:
+            parts = cast(list[Any], content) if isinstance(content, list) else [content]
+            native_sources: list[dict[str, str]] = []
+            for part in parts:
+                text = field(part, "text") if field(part, "type") == "text" else part
+                if not isinstance(text, str) or not isinstance(decode_result(text), str):
+                    raise ValueError("Search returned unsupported or ungrounded content.")
+                native_sources.append(native_text_source(text))
+            sources = collect_sources(native_sources)
+    if not sources:
+        raise ValueError("Search returned no usable source metadata.")
+    payload["sources"] = sources
+    validate_tool_result(payload)
+    return json.dumps(payload, ensure_ascii=True)
 
 
 def normalize_iq_result(payload: Any) -> dict[str, Any]:
@@ -187,7 +263,7 @@ def normalize_iq_result(payload: Any) -> dict[str, Any]:
             if isinstance(text, str) and text.strip():
                 answer_parts.append(text)
     answer = "\n".join(answer_parts)
-    sources = collect_sources(references)
+    sources = collect_sources({"references": references})
     if not answer.strip() or not sources:
         raise ValueError("IQ returned no grounded content with source references.")
     return {"answer": answer, "sources": sources}
@@ -246,7 +322,7 @@ async def create_graph(
         ))
         if iq_tool is None:
             search_endpoint = settings["SEARCH_ENDPOINT"].rstrip("/")
-            knowledge_base = quote(settings.get("FOUNDRY_IQ_KNOWLEDGE_BASE", "spo-knowledge-base"), safe="")
+            knowledge_base = quote(settings.get("FOUNDRY_IQ_KNOWLEDGE_BASE", "spo-native-knowledge-base"), safe="")
 
             @tool
             async def retrieve_foundry_iq(question: str) -> str:
@@ -311,7 +387,19 @@ async def create_graph(
 
         async def invoke(state: State, config: RunnableConfig) -> dict[str, Any]:
             try:
-                return await asyncio.wait_for(node.ainvoke(state, config), timeout=timeout)
+                result = await asyncio.wait_for(node.ainvoke(state, config), timeout=timeout)
+                if tool_instance.name == search_name:
+                    messages = result["messages"]
+                    if len(messages) != 1 or not isinstance(messages[0], ToolMessage):
+                        raise ValueError("Search must return exactly one tool message.")
+                    message = messages[0]
+                    if (message.name != search_name or message.tool_call_id != state["call_id"]
+                            or message.status != "success"):
+                        raise ValueError("Search returned a mismatched or failed tool message.")
+                    result["messages"] = [message.model_copy(update={
+                        "content": normalize_search_result(message.content, message.artifact),
+                    })]
+                return result
             except Exception as error:
                 return {"messages": [ToolMessage(
                     content=tool_error(error), name=tool_instance.name,

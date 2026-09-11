@@ -8,7 +8,7 @@ $parameters = @{
     ProjectId = '/subscriptions/test/resourceGroups/test/providers/Microsoft.CognitiveServices/accounts/test/projects/test'
     Location = 'centralus'
     ProjectEndpoint = 'https://example.invalid/api/projects/test'
-    ModelDeployment = 'test-model'
+    ModelDeployment = 'gpt-4o'
     SearchEndpoint = 'https://example.invalid'
     SearchConnectionName = 'test-search'
 }
@@ -20,12 +20,31 @@ $desired = @{
             type = 'azure_ai_search'; name = 'test-search'
             azure_ai_search = @{ indexes = @(@{
                 project_connection_id = "$($parameters.ProjectId)/connections/test-search"
-                index_name = 'spo-docs'; query_type = 'simple'; top_k = 5
+                index_name = 'spo-native-index'; query_type = 'vector_semantic_hybrid'; top_k = 5
             }) }
         })
     }
 }
 $mockState = @{ Calls = [System.Collections.Generic.List[string]]::new() }
+$passed = 0
+
+function Assert-ToolboxDefinition {
+    param([string]$Path)
+    $definition = Get-Content -LiteralPath $Path -Raw
+    foreach ($expected in @(
+        'name: foundry-rag', 'name: test-search',
+        "project_connection_id: $($parameters.ProjectId)/connections/test-search",
+        'index_name: spo-native-index', 'query_type: vector_semantic_hybrid', 'top_k: 5'
+    )) {
+        if ($definition -cnotmatch "(?m)^\s*(?:-\s+)?$([regex]::Escape($expected))\s*$") {
+            throw "Toolbox definition is missing the exact native contract: $expected"
+        }
+    }
+    if ($definition -match '__SEARCH_CONNECTION_|index_name:\s*spo-docs\b|query_type:\s*simple\b') {
+        throw 'Toolbox definition contains unresolved placeholders or legacy retrieval defaults.'
+    }
+    $mockState.DefinitionReads++
+}
 
 function az { throw 'Live Azure commands are prohibited in this test.' }
 function terraform { throw 'Terraform is not needed when deployment values are supplied.' }
@@ -61,13 +80,25 @@ function azd {
                 return 'ERROR: connection reset'
             }
             $toolbox = $desired | ConvertTo-Json -Depth 12 | ConvertFrom-Json
-            if ($mockState.Scenario -eq 'mismatch' -and -not $mockState.Published) {
-                $toolbox.version.tools[0].azure_ai_search.indexes[0].top_k = 1
+            if (-not $mockState.Published -or $mockState.Scenario -eq 'readback-mismatch') {
+                $index = $toolbox.version.tools[0].azure_ai_search.indexes[0]
+                switch ($mockState.Scenario) {
+                    'mismatch' { $index.top_k = 1 }
+                    'wrong-index' { $index.index_name = 'spo-docs' }
+                    'wrong-query' { $index.query_type = 'simple' }
+                    'wrong-query-case' { $index.query_type = 'VECTOR_SEMANTIC_HYBRID' }
+                    'wrong-connection' { $index.project_connection_id = 'other-connection' }
+                    'wrong-tool-name' { $toolbox.version.tools[0].name = 'other-search' }
+                    'missing-query' { $index.PSObject.Properties.Remove('query_type') }
+                    'extra-index' { $toolbox.version.tools[0].azure_ai_search.indexes += $index }
+                    'extra-tool' { $toolbox.version.tools += $toolbox.version.tools[0] }
+                    'readback-mismatch' { $index.index_name = 'spo-docs' }
+                }
             }
             return ($toolbox | ConvertTo-Json -Depth 12)
         }
-        'ai toolbox create foundry-rag --from-file *' { return }
-        'ai toolbox deploy *' { return '{"version":{"version":"7"}}' }
+        'ai toolbox create foundry-rag --from-file *' { Assert-ToolboxDefinition $args[5]; return }
+        'ai toolbox deploy *' { Assert-ToolboxDefinition $args[3]; return '{"version":{"version":"7"}}' }
         'ai toolbox publish foundry-rag 7 *' { $mockState.Published = $true; return }
         'deploy funwithfoundry-rag-agent *' {
             if ($mockState.Scenario -eq 'deploy-failure') {
@@ -93,12 +124,25 @@ function azd {
 
 $originalTemp = $env:TEMP
 $testTemp = Join-Path ([System.IO.Path]::GetTempPath()) "fwf-bootstrap-$([guid]::NewGuid().ToString('N'))"
-$null = New-Item -ItemType Directory -Path $testTemp
-$env:TEMP = $testTemp
+$testWorkspace = Join-Path $testTemp 'workspace'
+$testArtifacts = Join-Path $testTemp 'artifacts'
+$null = New-Item -ItemType Directory -Path $testWorkspace, $testArtifacts -Force
+$env:TEMP = $testArtifacts
+Push-Location $testWorkspace
 try {
-    foreach ($scenario in @('absent', 'correct', 'mismatch', 'env-failure', 'transient-read', 'deploy-failure')) {
+    $agentDefinition = Get-Content (Join-Path $root 'azure.yaml') -Raw
+    if ($agentDefinition -cnotmatch '(?m)^\s*FOUNDRY_IQ_KNOWLEDGE_BASE: spo-native-knowledge-base\s*$' -or
+        $agentDefinition -cnotmatch '(?m)^\s*TOOLBOX_NAME: foundry-rag\s*$') {
+        throw 'The agent must use the native knowledge base and retain the foundry-rag toolbox.'
+    }
+    $passed++
+    Write-Host 'PASS native bootstrap: agent configuration'
+    foreach ($scenario in @('absent', 'correct', 'mismatch', 'wrong-index', 'wrong-query', 'wrong-query-case',
+                            'wrong-connection', 'wrong-tool-name', 'missing-query', 'extra-index', 'extra-tool',
+                            'readback-mismatch', 'env-failure', 'transient-read', 'deploy-failure')) {
         $mockState.Scenario = $scenario
         $mockState.ConnectionReads = 0
+        $mockState.DefinitionReads = 0
         $mockState.Published = $false
         $mockState.Calls.Clear()
         $failure = $null
@@ -115,17 +159,31 @@ try {
                 throw 'A transient-looking native deployment failure must never be retried.'
             }
         }
+        elseif ($scenario -eq 'readback-mismatch') {
+            if (-not $failure -or $failure.Exception.Message -notmatch 'Native toolbox readback must match' -or
+                @($mockState.Calls | Where-Object { $_ -like 'deploy *' }).Count -ne 0 -or
+                -not $mockState.Published -or $mockState.DefinitionReads -ne 1) {
+                throw 'A mismatched toolbox readback must stop before native agent deployment.'
+            }
+        }
         else {
             if ($failure) { throw $failure }
             $mutations = @($mockState.Calls | Where-Object { $_ -match '^ai toolbox (create|deploy|publish) ' } | ForEach-Object { ($_ -split ' ')[2] }) -join ','
-            $expected = switch ($scenario) { 'absent' { 'create' }; 'correct' { '' }; 'mismatch' { 'deploy,publish' }; 'transient-read' { '' } }
+            $expected = switch ($scenario) { 'absent' { 'create' }; 'correct' { '' }; 'transient-read' { '' }; default { 'deploy,publish' } }
             if ($mutations -ne $expected) { throw "${scenario}: expected '$expected', observed '$mutations'." }
+            $expectedDefinitions = if ($expected) { 1 } else { 0 }
+            if ($mockState.DefinitionReads -ne $expectedDefinitions) { throw "${scenario}: rendered toolbox definition was not verified." }
+            if ($mockState.Calls -cnotcontains 'env set FOUNDRY_IQ_KNOWLEDGE_BASE spo-native-knowledge-base' -or
+                $mockState.Calls -cnotcontains 'env set AZURE_AI_MODEL_DEPLOYMENT_NAME gpt-4o') {
+                throw "${scenario}: native knowledge base and answer-model environment must be preserved."
+            }
             if ($mockState.Calls[-1] -notlike 'ai agent show *') { throw "${scenario}: agent verification was not reached." }
             if ($scenario -eq 'transient-read' -and ($mockState.ConnectionReads -ne 2 -or @($mockState.Calls | Where-Object { $_ -like 'deploy *' }).Count -ne 1)) {
                 throw 'Only the transient read may be retried; native deployment runs once.'
             }
         }
-        if (@(Get-ChildItem -LiteralPath $testTemp).Count) { throw "${scenario}: toolbox temporary file leaked." }
+        if (@(Get-ChildItem -LiteralPath $testArtifacts).Count) { throw "${scenario}: toolbox temporary file leaked." }
+        $passed++
         Write-Host "PASS native bootstrap: $scenario"
     }
     $readParameters = @{ ReadOnly = $true; ProjectEndpoint = $parameters.ProjectEndpoint; EnvironmentName = $parameters.EnvironmentName; AzdDebug = $true }
@@ -149,6 +207,7 @@ try {
                 throw 'Read-only metadata must return the parsed agent and toolbox together.'
             }
         }
+        $passed++
         Write-Host "PASS native bootstrap: $scenario"
     }
     foreach ($target in @('agent', 'toolbox')) {
@@ -162,6 +221,7 @@ try {
             if (-not $failure -or $mockState.Calls.Count -ne $expectedCount -or @($mockState.Calls | Where-Object { $_ -notmatch '^ai (agent|toolbox) show ' }).Count) {
                 throw "$($mockState.Scenario): invalid metadata must fail without retries or writes."
             }
+            $passed++
             Write-Host "PASS native bootstrap: $($mockState.Scenario)"
         }
     }
@@ -175,10 +235,13 @@ try {
         if (-not $failure -or $failure.Exception.Message -notmatch 'requires ProjectEndpoint and EnvironmentName' -or $mockState.Calls.Count) {
             throw "Read-only missing $missing must fail before any CLI calls."
         }
+        $passed++
         Write-Host "PASS native bootstrap: read-only missing $missing"
     }
+    Write-Host "PASS native deployment checks: $passed (PowerShell $($PSVersionTable.PSVersion))"
 }
 finally {
+    Pop-Location
     $env:TEMP = $originalTemp
     Remove-Item -LiteralPath $testTemp -Recurse -Force
 }

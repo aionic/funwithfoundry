@@ -70,27 +70,6 @@ variable "staging_blob_endpoint" {
   type = string
 }
 
-variable "content_understanding_account_id" {
-  type = string
-}
-
-variable "content_understanding_endpoint" {
-  type = string
-}
-
-variable "search_id" {
-  type = string
-}
-
-variable "search_endpoint" {
-  type = string
-}
-
-variable "search_index" {
-  type    = string
-  default = "spo-docs"
-}
-
 variable "sharepoint_hostname" {
   type = string
 }

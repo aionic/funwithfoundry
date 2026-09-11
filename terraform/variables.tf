@@ -32,6 +32,17 @@ variable "jumpbox_size" {
   default     = "Standard_D4s_v5"
 }
 
+variable "search_sku" {
+  description = "Search tier for directly configured native CU indexers, not generated knowledge-source ingestion. S1 private enrichment requires live service createdAt >= 2024-04-03."
+  type        = string
+  default     = "standard"
+
+  validation {
+    condition     = contains(["standard", "standard2", "standard3"], var.search_sku)
+    error_message = "Directly configured native CU ingestion supports Search S1, S2 or S3 with default hosting; S1 eligibility requires live createdAt >= 2024-04-03."
+  }
+}
+
 variable "jumpbox_admin_username" {
   description = "Local administrator username for the jumpbox."
   type        = string

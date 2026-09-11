@@ -96,103 +96,150 @@ or, after separate site-scoped SharePoint consent:
 
 All extra keys, query parameters, duplicate JSON keys, unknown fixture IDs,
 source overrides, supplied bytes, and URLs are rejected. Only the built-in fixed
-synthetic PDF is accepted in fixture mode. Both modes execute staging upload,
-CU `analyzeBinary`, nonempty extraction, and the private cross-region Search push.
+synthetic PDF is accepted in fixture mode. The staging-only runtime contract is
+to upload the document to private Blob storage and return HTTP 202. A 202 response
+means staging was accepted, not that indexing or retrieval has completed.
 The fixture states: fictional Project Cedar, owner Morgan Example, launch
 15 October 2026, document retention 30 days. It makes no live customer claims.
 
 `enable_synthetic_fixture` defaults to true in this module; it never bypasses
 authentication. The runtime defaults to disabled when its setting is absent.
 `max_document_bytes` defaults to 5 MiB and cannot exceed 10 MiB. The supported
-source types are PDF, PNG, and JPEG, checked by extension, MIME, and signature.
+source types are PDF, PNG, JPEG and TXT. Extension/MIME must match; PDF/PNG/JPEG
+require matching signatures. TXT requires valid UTF-8 with an optional UTF-8 BOM
+and `text/plain`, optionally with a UTF-8 charset. The original bytes, including
+any BOM, are preserved; the Function does not extract, convert, chunk or embed.
+[Native CU TXT format support][cu-formats] was checked on 2026-09-11; documented
+format support does not prove a successful live SharePoint-to-CU path.
 SharePoint accepts only the configured hostname/site/default-drive file; Graph
 access must use `Sites.Selected` plus a read grant to that site. This module does
 not grant Graph permissions. Downloads are streamed with a byte limit; Graph
 download redirects must stay on the configured SharePoint hostname and are
 followed without forwarding the Graph bearer. No arbitrary external redirect
-or CU operation host is followed. Hosts requiring other download domains need
+is followed. Hosts requiring other download domains need
 explicit review, not a permissive suffix wildcard.
 
-**Parent Search schema prerequisite:** add these string fields to the single
-canonical index writer outside this slice before invoking ingestion:
+**Parent native-ingestion prerequisite:** use the root `native_ingestion` output
+to initialize the six explicit version-2 definitions over `spo-staging`, restricted
+to `native/`: datasource, index, skillset, private indexer, `searchIndex` knowledge
+source and knowledge base. The Function stages documents under that prefix;
+Search executes native CU extraction/chunking, embeddings and child projections.
+The knowledge source references the explicit index; it does not generate the
+ingestion resources. The Function neither calls CU/Search nor writes index documents.
 
-| Field | Value |
-| --- | --- |
-| `id` | SHA256 of canonical source kind/hostname/site path/file path; Search key |
-| `title` | Configured file name or built-in fixture title |
-| `content` | Nonempty CU markdown, bounded to 2 MiB UTF-8 |
-| `source_url` | Graph item's canonical web URL, or fixture URN |
-| `source_id` | Same canonical source identity hash as `id` |
-| `content_hash` | SHA256 of original input bytes |
+The Function retains its staging `Storage Blob Data Contributor` grant, host
+storage roles, app-role assignments, and Easy Auth. The module no longer accepts
+`content_understanding_account_id`, `content_understanding_endpoint`, `search_id`,
+`search_endpoint`, or `search_index`, and emits no `CU_*` or `SEARCH_*` settings.
+Do not deploy the old synchronous ingestion package with this configuration.
 
-Retain existing searchable title/content and semantic configuration. Provenance
-fields must be retrievable; `source_id` and `content_hash` should be filterable.
-Do not silently omit provenance for an old index. The existing external index
-writer does not yet declare all three provenance fields, so live ingestion is
-blocked until the parent aligns it. Changed source bytes update the same Search
-document; different sites/paths or historically colliding filenames do not collide.
-Staging uses immutable `<source_id>/<content_hash>.<extension>` names and metadata.
-Only exact `ContainerAlreadyExists` and `BlobAlreadyExists` conflicts are accepted.
-Staging generations are retained; lifecycle/retention policy remains an operator task.
+The active path uses Search S1 with an explicit `executionEnvironment: private`
+indexer and API `2026-08-01-preview`. Direct private built-in-skill indexers require
+a service created after April 3, 2024; embeddings additionally require a
+high-capacity region. The current Central US S1 service, created September 9, 2026,
+passed the specific native CU/embedding fixture path with South Central US models.
+The generated private `azureBlob` S2+ route and its earlier quota blocker are
+historical, not the active prerequisite. Root Terraform attaches a dedicated ingestion UAMI to Search alongside
+its existing system identity. Use `native_ingestion.identity_resource_id` for
+the ingestion identity and model `authIdentity`; a query-time vectorizer can use
+the same identity. The system identity still owns primary-account planner access.
 
-REST and staging operations have at most three attempts, only retrying transient
-statuses (429, 500, 502, 503, 504), with `Retry-After` seconds/date honored up to
-10 seconds. Terminal 4xx fail immediately. SDK retries are disabled to prevent
-multiplicative retry counts. Ambiguous POST transport failures are not retried.
-CU polling is limited to 40 polls and a 180-second polling budget (an in-flight
-HTTP attempt can exceed this budget). This remains a synchronous small-file POC;
-slow work can exceed the platform HTTP response limit and is not a durable queue.
-Search HTTP success/207 alone is insufficient: every returned item must match
-the expected key and report boolean success with status 200 or 201.
+The parent must explicitly approve the three `shared_private_links` entries:
+secondary staging `blob`, secondary Foundry `foundry_account`, and secondary
+Foundry `openai_account`. The existing primary `spl-foundry` planner link remains
+separate. Verify explicit indexer private execution and successful synchronization
+before claiming readiness. There is no public fallback. Search-managed SPL traffic
+does not establish transit through either lab hub; routing is unchanged.
+
+See the [native ownership/migration guide](../../../docs/native-ingestion.md),
+[private indexer connections][private-indexer] and the historical
+[generated Blob prerequisites][blob-ks]. Staging retention, runtime 202
+behavior, source creation, link approval, and synchronization checks are owned by
+the parent runtime/scripts, not this Terraform module.
+
+[blob-ks]: https://learn.microsoft.com/azure/search/agentic-knowledge-source-how-to-blob
+[private-indexer]: https://learn.microsoft.com/azure/search/search-indexer-howto-access-private
+[cu-formats]: https://learn.microsoft.com/azure/search/cognitive-search-skill-content-understanding
 
 Responses use valid JSON and a generated `request_id`, also in `X-Request-ID`.
-Success returns IDs/hashes/counts, not document contents. Failures return a stable
+Staging acceptance returns identifiers, not document contents. Failures return a stable
 code and stage; logs contain only correlation, stage, outcome, duration, and
 exception type. Easy Auth can reject before the handler and has its own response
 format; handler correlation is not promised for a platform-level rejection.
 
+## Current SharePoint Boundary
+
+Actual SharePoint integration is deferred because no sample is available. The user
+accepted the structure for publication, not as acquisition proof or grant approval.
+The fixture-backed native S1 baseline remains validated; no further cloud actions
+are planned for this publication.
+
+As of 2026-09-11, 15 UTC, deployment `077916bd-dee7-4c46-be1f-7b9965eb9de6`
+includes TXT staging and root Graph site URL handling. Its package SHA-256 is
+`e5e895a83396d468ab404abd78c4f95f737c9f9ee42c5841cee797dd7f0e78d8`.
+The configured `funwithfoundry-architecture-note.txt` is unchanged. The earlier
+pre-Graph HTTP 415 is historical; the retry now returns HTTP 502. Complete Function
+Graph app-role inventory is empty (count 0, no more pages), confirming missing
+`Sites.Selected`. Delegated root-site lookup succeeds but exact file metadata and
+site-permissions GETs return 403 `accessDenied`. File existence and site consent
+remain unknown. No directory/site/content permissions changed, and no actual
+SharePoint CU acceptance is claimed.
+
+After reviewing existing grants, an authorized administrator can use
+[Grant-SharePointAccess.ps1](../../../scripts/Grant-SharePointAccess.ps1) with
+`-TerraformDir .\terraform -Role read` from the repository root. The helper
+inventories grants before writing, assigns `Sites.Selected` and read on one site
+as needed, and never uses a broader fallback. Managing site permissions requires
+`Sites.FullControl.All` on the **consenting Graph client, not the Function**, plus
+operator authority to assign the Graph application role. Azure Owner PIM alone is
+insufficient. This is optional future work requiring an approved sample and separate
+consent. See the [administrator handoff](../../../docs/native-ingestion.md#sharepoint-administrator-handoff)
+for output-derived setup and the private verification command; dated lab targets
+remain in [validation history](../../../docs/VALIDATION.md#sharepoint-administrator-boundary).
+
 ## Local Verification
 
-From the repository root, configure the existing isolated venv before Python use:
+Use a disposable copy of the Terraform configuration and tests, without tfvars,
+state, saved plans, or deployment artifacts. Initialize it with `-backend=false`
+and the existing provider cache. Copy the root dependency lockfile read-only for
+root validation; standalone module copies can prune unused providers from their
+own copied lockfiles. Never change the deployment lockfile for a test run.
+
+With `$checkRoot` pointing to that initialized disposable copy:
 
 ```powershell
-uv pip install --python .\.venv\Scripts\python.exe -r .\src\ingest_func\requirements.txt
-& .\.venv\Scripts\python.exe -B -m unittest discover -s tests -p test_ingestion.py -v
-terraform -chdir=terraform/modules/ingest-function init -backend=false
-terraform -chdir=terraform/modules/ingest-function validate
-terraform -chdir=terraform/modules/ingest-function test
-terraform -chdir=terraform validate -no-color
+terraform "-chdir=$checkRoot" validate -no-color
+terraform "-chdir=$checkRoot" test -no-color
+terraform "-chdir=$checkRoot/modules/foundry-agent-private" test -no-color
+terraform "-chdir=$checkRoot/modules/ingest-function" test -no-color
 ```
 
-The unit tests mock the Function HTTP binding and all service transports, and
-exercise real JWT signing/verification and ingestion helpers. No cloud calls.
-Native Terraform tests mock **every** provider and run plans only, checking named
-caller instance keys, resolved client/principal pairs, the v2 application role and
-`idtyp` claim request, empty-map rejection, and provider-tenant mismatch. The caller
-IDs in these mocks are known fixtures; fresh-plan unknown-value compatibility is
-a configuration review, not a live deployment test. Never substitute
-an ordinary `terraform plan`/`apply` against the existing lab for these tests.
-Standalone module initialization creates an ignored local dependency lockfile;
-the existing parent Terraform lockfile remains the deployment dependency lock.
-Schema validation was performed with AzureRM 4.81.0 and AzureAD 3.9.0; those are
-the module minimums. Python syntax targets 3.11; local tests use native 3.13.
-Direct dependencies are pinned; the local Function SDK import check requires its
-Werkzeug/MarkupSafe transitive dependencies to be available as well.
+Native Terraform tests mock **every** provider and run plans only. The root tests
+check the exact native-ingestion output, resource-scoped grants, SPL targets,
+Function role separation and the explicit S1 path. The primary module tests evaluate the
+dual identity body and preserve the system-identity planner grant and primary SPL.
+The Function tests check staging-only settings, Blob access, caller identity pairs,
+the application-only role, empty allowlist rejection, and provider-tenant mismatch.
+Targeting in the root and Search mock tests deliberately limits the graph under
+test; it is not a deployment recommendation. Fixture IDs are known, so these tests
+do not prove fresh-deployment unknown-value behavior or Azure service acceptance.
 
-Local evidence (2026-09-09): 24 unittest cases passed on the existing Python
-3.13.7 venv, all four Python files passed 3.11 syntax parsing, module validation
-and all three mocked Terraform plans passed, and the runner passed seven checks
-against six mocked HTTP calls. PowerShell parsing and `-WhatIf` also passed.
-Full Function SDK import remains unverified locally: official wheel downloads
-for its missing Werkzeug/MarkupSafe dependencies failed TLS handshakes, including
-with the system trust store. Certificate validation was never disabled. Tests
-explicitly mock the HTTP binding; they do not claim a running Functions worker.
-All dependency installation used uv in the existing venv, never global Python.
+Historical generated-source validation on 2026-09-10: root validation and all seven mocked cases passed
+with Terraform 1.15.8, AzureRM 4.81.0, AzAPI 2.12.0, and AzureAD 3.9.0. The new
+mocks use plan-time overrides. No runtime package, Azure networking, preview
+capability, SPL approval, or actual indexer execution is validated by these mocks.
+Never substitute a live `terraform plan` or `apply` for this procedure.
+
+The 2026-09-11 follow-up full gate passed 81 Python tests with zero skips (40
+ingestion, 29 retrieval, 12 schema), initializer 12237 and end-to-end 1333 checks
+on both PowerShell 7/5.1, deployment 456, five Terraform tests and 286 documentation
+links. See [current validation](../../../docs/VALIDATION.md#current-native-follow-up);
+the earlier seven-case result is not the current run's count.
 
 ## Private Runner Check
 
-After root wiring, index alignment, deployment, and explicit approval, run the new
-`scripts/jumpbox/Test-Ingestion.ps1` **inside the VNet**. Supply `FunctionHostname`
+After compatible native-source creation, deployment and explicit approval, run
+[Test-Ingestion.ps1](../../../scripts/jumpbox/Test-Ingestion.ps1) **inside the VNet**. Supply `FunctionHostname`
 and `ApiClientId` from outputs. By default it obtains an IMDS token from the VM;
 pass `ManagedIdentityClientId` to select an approved user-assigned identity.
 Alternatively pass an already-acquired token as a `SecureString` in `AccessToken`.
@@ -202,7 +249,24 @@ input-rejection probes. `-IncludeSharePoint` requires separate site consent.
 `DeniedAccessToken` optionally tests a real unapproved caller's token for 403.
 The script emits sanitized machine-readable checks and exits nonzero on failure.
 It never labels generic 403 as proof of public-network isolation and does not
-claim IQ/native-agent retrieval, which must be composed by the parent workflow.
+claim IQ/native-agent retrieval; the separate end-to-end verifier supplies those checks.
+
+Normal Knowledge/Verify use default-off initializer `-RefreshDataSourceBinding`
+to renew only a valid configuration-matched receipt whose ETag alone is stale.
+The refresh issues one current-ETag `If-Match` PUT, validates readback and saves the
+receipt; wrong/missing receipts or visible drift block and HTTP 412 is not retried.
+Explicit `-RebindDataSource` remains reviewed adoption. Verify initializes after
+authorization probes immediately before E2E, even with an existing checkpoint.
+Two normal Verify passes and immediate same-ETag/no-PUT receipt reuse are recorded
+in [validation](../../../docs/VALIDATION.md#current-native-follow-up); they do not
+prove a full orchestrator DAG or deletion behavior.
+
+The [end-to-end verifier](../../../scripts/jumpbox/Invoke-EndToEnd.ps1) defaults to
+`-Mode fixture`. Real `-Mode sharepoint` requires explicit `-Question` and
+`-ExpectedAnswer`, a matching returned staging mode and all existing provenance,
+fresh indexing, IQ and strict agent guards. Use the
+[complete private-runner example](../../../docs/native-ingestion.md#private-sharepoint-verification)
+after approved consent; a fixture pass is not SharePoint acquisition proof.
 
 No cloud deployment, consent grant, live Function ingestion, or retrieval test
 is performed by the local verification commands above.
