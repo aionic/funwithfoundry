@@ -10,6 +10,16 @@ with two temporary Mermaid renders. This workstation run used Terraform 1.16.2;
 CI remains pinned to 1.15.8. Neither this run nor structure acceptance certifies
 actual SharePoint ingestion, source deletion or a clean full deployment rehearsal.
 
+Native S1 implementation and documentation were pushed to `main` in commit
+`7a1c731d23705eb43e7c7994d126cef5a5c1e225`.
+[GitHub Actions run 34630525370](https://github.com/aionic/funwithfoundry/actions/runs/34630525370)
+passed Windows release checks, Linux runtime checks and the secret scan.
+The exact 171-file staged snapshot also passed local Gitleaks 8.24.2. Ignored
+state, credentials, lab evidence and the unrelated diagnostic script were excluded.
+Node 20 deprecation annotations on pinned actions were warnings, not failures;
+action upgrades remain separate maintenance work. No Azure resources or SharePoint
+permissions were changed by this publication.
+
 ## Current native follow-up
 
 **2026-09-11, 15 UTC follow-up:** the TXT/root-site Function fixes and guarded
